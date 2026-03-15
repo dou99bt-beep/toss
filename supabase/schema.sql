@@ -1,5 +1,6 @@
 -- ==========================================
 -- Toss Ads CPA Optimization — Supabase Schema
+-- 안전하게 재실행 가능 (DROP IF EXISTS 포함)
 -- ==========================================
 
 -- Helper: auto-update updated_at trigger
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at       TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_campaigns_updated_at ON campaigns;
 CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON campaigns FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 2. AdSet
@@ -36,6 +38,7 @@ CREATE TABLE IF NOT EXISTS ad_sets (
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at     TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_ad_sets_updated_at ON ad_sets;
 CREATE TRIGGER update_ad_sets_updated_at BEFORE UPDATE ON ad_sets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 3. Creative
@@ -49,6 +52,7 @@ CREATE TABLE IF NOT EXISTS creatives (
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at        TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_creatives_updated_at ON creatives;
 CREATE TRIGGER update_creatives_updated_at BEFORE UPDATE ON creatives FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 4. Audience
@@ -63,6 +67,7 @@ CREATE TABLE IF NOT EXISTS audiences (
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at          TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_audiences_updated_at ON audiences;
 CREATE TRIGGER update_audiences_updated_at BEFORE UPDATE ON audiences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 5. Schedule
@@ -75,6 +80,7 @@ CREATE TABLE IF NOT EXISTS schedules (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at  TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_schedules_updated_at ON schedules;
 CREATE TRIGGER update_schedules_updated_at BEFORE UPDATE ON schedules FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 6. ArmRegistry
@@ -90,6 +96,7 @@ CREATE TABLE IF NOT EXISTS arm_registry (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at  TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_arm_registry_updated_at ON arm_registry;
 CREATE TRIGGER update_arm_registry_updated_at BEFORE UPDATE ON arm_registry FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 7. PerformanceDaily
@@ -106,6 +113,7 @@ CREATE TABLE IF NOT EXISTS performance_daily (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at  TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_performance_daily_updated_at ON performance_daily;
 CREATE TRIGGER update_performance_daily_updated_at BEFORE UPDATE ON performance_daily FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 8. PerformanceHourly
@@ -121,6 +129,7 @@ CREATE TABLE IF NOT EXISTS performance_hourly (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at  TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_performance_hourly_updated_at ON performance_hourly;
 CREATE TRIGGER update_performance_hourly_updated_at BEFORE UPDATE ON performance_hourly FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 9. PerformanceCreative
@@ -135,6 +144,7 @@ CREATE TABLE IF NOT EXISTS performance_creative (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at    TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_performance_creative_updated_at ON performance_creative;
 CREATE TRIGGER update_performance_creative_updated_at BEFORE UPDATE ON performance_creative FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 10. LeadQuality
@@ -148,6 +158,7 @@ CREATE TABLE IF NOT EXISTS lead_quality (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at  TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_lead_quality_updated_at ON lead_quality;
 CREATE TRIGGER update_lead_quality_updated_at BEFORE UPDATE ON lead_quality FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 11. AutomationRule
@@ -161,6 +172,7 @@ CREATE TABLE IF NOT EXISTS automation_rules (
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at     TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_automation_rules_updated_at ON automation_rules;
 CREATE TRIGGER update_automation_rules_updated_at BEFORE UPDATE ON automation_rules FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 12. RecommendedAction
@@ -175,6 +187,7 @@ CREATE TABLE IF NOT EXISTS recommended_actions (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at  TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_recommended_actions_updated_at ON recommended_actions;
 CREATE TRIGGER update_recommended_actions_updated_at BEFORE UPDATE ON recommended_actions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 13. ActionLog
@@ -188,6 +201,7 @@ CREATE TABLE IF NOT EXISTS action_logs (
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at              TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_action_logs_updated_at ON action_logs;
 CREATE TRIGGER update_action_logs_updated_at BEFORE UPDATE ON action_logs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 14. UserApproval
@@ -200,6 +214,7 @@ CREATE TABLE IF NOT EXISTS user_approvals (
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at              TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_user_approvals_updated_at ON user_approvals;
 CREATE TRIGGER update_user_approvals_updated_at BEFORE UPDATE ON user_approvals FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 15. CrawlerLog
@@ -213,6 +228,7 @@ CREATE TABLE IF NOT EXISTS crawler_logs (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at      TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_crawler_logs_updated_at ON crawler_logs;
 CREATE TRIGGER update_crawler_logs_updated_at BEFORE UPDATE ON crawler_logs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 16. SelectorRegistry
@@ -226,6 +242,7 @@ CREATE TABLE IF NOT EXISTS selector_registry (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at      TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_selector_registry_updated_at ON selector_registry;
 CREATE TRIGGER update_selector_registry_updated_at BEFORE UPDATE ON selector_registry FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 17. CrawlerJob
@@ -241,42 +258,27 @@ CREATE TABLE IF NOT EXISTS crawler_jobs (
   started_at   TIMESTAMPTZ,
   completed_at TIMESTAMPTZ
 );
+DROP TRIGGER IF EXISTS update_crawler_jobs_updated_at ON crawler_jobs;
 CREATE TRIGGER update_crawler_jobs_updated_at BEFORE UPDATE ON crawler_jobs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Disable RLS for development (using anon key)
-ALTER TABLE campaigns ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ad_sets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE creatives ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audiences ENABLE ROW LEVEL SECURITY;
-ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE arm_registry ENABLE ROW LEVEL SECURITY;
-ALTER TABLE performance_daily ENABLE ROW LEVEL SECURITY;
-ALTER TABLE performance_hourly ENABLE ROW LEVEL SECURITY;
-ALTER TABLE performance_creative ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lead_quality ENABLE ROW LEVEL SECURITY;
-ALTER TABLE automation_rules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE recommended_actions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE action_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_approvals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE crawler_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE selector_registry ENABLE ROW LEVEL SECURITY;
-ALTER TABLE crawler_jobs ENABLE ROW LEVEL SECURITY;
-
--- Allow anon access (development only)
-CREATE POLICY "Allow all for anon" ON campaigns FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON ad_sets FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON creatives FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON audiences FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON schedules FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON arm_registry FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON performance_daily FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON performance_hourly FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON performance_creative FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON lead_quality FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON automation_rules FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON recommended_actions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON action_logs FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON user_approvals FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON crawler_logs FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON selector_registry FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for anon" ON crawler_jobs FOR ALL USING (true) WITH CHECK (true);
+-- RLS + Policies (idempotent)
+DO $$
+DECLARE
+  tbl TEXT;
+BEGIN
+  FOR tbl IN SELECT unnest(ARRAY[
+    'campaigns','ad_sets','creatives','audiences','schedules',
+    'arm_registry','performance_daily','performance_hourly',
+    'performance_creative','lead_quality','automation_rules',
+    'recommended_actions','action_logs','user_approvals',
+    'crawler_logs','selector_registry','crawler_jobs'
+  ]) LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', tbl);
+    -- Drop existing policy if exists, then create
+    BEGIN
+      EXECUTE format('DROP POLICY IF EXISTS "Allow all for anon" ON %I', tbl);
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    EXECUTE format('CREATE POLICY "Allow all for anon" ON %I FOR ALL USING (true) WITH CHECK (true)', tbl);
+  END LOOP;
+END $$;
