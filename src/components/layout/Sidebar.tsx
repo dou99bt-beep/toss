@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   LayoutDashboard, Network, GitMerge, Zap, Image, 
-  Inbox, Bot, ShieldAlert, Settings, LogOut, Moon, Sun, Menu, X, Bell
+  Inbox, Bot, ShieldAlert, Settings, LogOut, Moon, Sun, Menu, X, Bell, ClipboardList
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store/useAppStore';
@@ -22,6 +22,7 @@ const menus = [
   { id: 'action-center', label: 'Action Center', icon: Inbox },
   { id: 'alert-center-page', label: 'Alert Center', icon: Bell },
   { id: 'bot-scheduler', label: 'Bot / Scheduler', icon: Bot },
+  { id: 'lead-form', label: '리드 양식', icon: ClipboardList },
   { id: 'audit-log', label: 'Audit Log', icon: ShieldAlert },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];

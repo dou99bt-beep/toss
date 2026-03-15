@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Arm, Action, Rule, BotStatus } from '../types';
+import tossAdsMockDB from '../mocks/tossAdsMockData';
 
 interface AppState {
   theme: 'light' | 'dark';
@@ -65,10 +66,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (response.ok) {
         const data = await response.json();
         set({ actions: data });
+        return;
       }
     } catch (error) {
-      console.error('Failed to fetch actions:', error);
+      console.warn('API unavailable, using mock data for actions');
     }
+    // Fallback to mock data
+    set({ actions: tossAdsMockDB.recommendedActions });
   },
 
   fetchArms: async () => {
@@ -138,10 +142,56 @@ export const useAppStore = create<AppState>((set, get) => ({
           };
         });
         set({ arms: mappedArms });
+        return;
       }
     } catch (error) {
-      console.error('Failed to fetch arms:', error);
+      console.warn('API unavailable, using mock data for arms');
     }
+    // Fallback: generate arms from mock data directly
+    const rule = get().rule;
+    const mockArms: Arm[] = tossAdsMockDB.arms.map((arm) => {
+      const armDailyData = tossAdsMockDB.performanceDaily.filter(p => p.arm_id === arm.id);
+      const totalSpend = armDailyData.reduce((sum, p) => sum + p.spend, 0);
+      const totalLeads = armDailyData.reduce((sum, p) => sum + p.leads, 0);
+      const totalClicks = armDailyData.reduce((sum, p) => sum + p.clicks, 0);
+      const totalImpressions = armDailyData.reduce((sum, p) => sum + p.impressions, 0);
+      const cpa = totalLeads > 0 ? totalSpend / totalLeads : 0;
+      const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+      const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+      const cvr = totalClicks > 0 ? (totalLeads / totalClicks) * 100 : 0;
+      const validLeads = Math.floor(totalLeads * (0.7 + Math.random() * 0.2));
+      const validLeadRate = totalLeads > 0 ? (validLeads / totalLeads) * 100 : 0;
+      const adSet = tossAdsMockDB.adSets.find(a => a.id === arm.ad_set_id);
+      const campaign = tossAdsMockDB.campaigns.find(c => c.id === arm.campaign_id);
+      const creative = tossAdsMockDB.creatives.find(c => c.id === arm.creative_id);
+      const audience = tossAdsMockDB.audiences.find(a => a.id === arm.audience_id);
+      const schedule = tossAdsMockDB.schedules.find(s => s.id === arm.schedule_id);
+      
+      let status: Arm['status'] = arm.status === 'PAUSED' ? 'PAUSED' : 'STABLE';
+      let reason = '목표 CPA 내에서 안정적으로 운영 중입니다.';
+      if (totalSpend < rule.targetCpa * 0.5 && totalClicks < rule.minClicks) {
+        status = 'TESTING'; reason = `데이터 수집 중 (클릭 ${totalClicks}회). 최소 ${rule.minClicks}회 클릭 이후 평가 시작.`;
+      } else if (totalClicks >= rule.minClicks && totalLeads === 0) {
+        status = 'PAUSE_CANDIDATE'; reason = `클릭 ${totalClicks}회 이상 발생했으나 리드가 0건.`;
+      } else if (cpa > 0 && cpa <= rule.targetCpa * 0.8) {
+        status = 'SCALE'; reason = `CPA ${cpa.toLocaleString()}원으로 우수. 예산 증액 권장.`;
+      } else if (cpa > rule.targetCpa * (rule.stopCriteria / 100)) {
+        status = 'PAUSED'; reason = `CPA가 중단 기준을 초과했습니다.`;
+      } else if (cpa > rule.targetCpa * 1.1) {
+        status = 'REDUCE'; reason = `CPA가 목표를 초과. 예산 감액 권장.`;
+      }
+      
+      return {
+        id: arm.id, campaignName: campaign?.name || '', adSetName: adSet?.name || '',
+        creativeName: creative?.content || '', target: audience?.name || '',
+        schedule: schedule ? `${schedule.day_of_week} ${schedule.start_hour}~${schedule.end_hour}시` : '-',
+        bidStrategy: adSet ? `${adSet.bid_strategy} ${adSet.bid_type}` : '자동',
+        status, spend: totalSpend, impressions: totalImpressions, clicks: totalClicks,
+        leads: totalLeads, validLeads, cpa, ctr, cpc, cvr, validLeadRate, roas: 0,
+        reason, createdAt: new Date().toISOString()
+      };
+    });
+    set({ arms: mockArms });
   },
   
   approveAction: async (id) => {

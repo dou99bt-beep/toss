@@ -9,6 +9,7 @@ import { AdminAnalysis } from './pages/AdminAnalysis';
 import { CreativeIntelligence } from './pages/CreativeIntelligence';
 import { AuditLog } from './pages/AuditLog';
 import { AlertCenter } from './pages/AlertCenter';
+import { LeadFormPreview } from './pages/LeadFormPreview';
 import { Settings } from './pages/Settings';
 import { useAppStore } from './store/useAppStore';
 
@@ -41,6 +42,8 @@ export default function App() {
         return <AlertCenter />;
       case 'audit-log':
         return <AuditLog />;
+      case 'lead-form':
+        return <LeadFormPreview />;
       case 'settings':
         return <Settings />;
       default:
