@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // 실제 운영 시 "postgresql"로 변경
+  url      = env("DATABASE_URL")
+}
+
+model Campaign {
+  id               String    @id @default(uuid())
+  toss_campaign_id String    @unique
+  name             String
+  status           String    @default("ON")
+  budget           Float
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  deleted_at       DateTime?
+
+  ad_sets          AdSet[]
+}
+
+model AdSet {
+  id            String    @id @default(uuid())
+  campaign_id   String
+  toss_adset_id String    @unique
+  name          String
+  status        String    @default("ON")
+  target_cpa    Float
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+
+  campaign      Campaign  @relation(fields: [campaign_id], references: [id])
+  creatives     Creative[]
+  arms          ArmRegistry[]
+}
+
+model Creative {
+  id               String    @id @default(uuid())
+  ad_set_id        String
+  toss_creative_id String    @unique
+  type             String    // IMAGE, TEXT
+  content          String
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  deleted_at       DateTime?
+
+  ad_set           AdSet     @relation(fields: [ad_set_id], references: [id])
+  arms             ArmRegistry[]
+  performance      PerformanceCreative[]
+}
+
+model Audience {
+  id                 String    @id @default(uuid())
+  name               String
+  age_min            Int?
+  age_max            Int?
+  gender             String?
+  custom_audience_id String?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
+
+  arms               ArmRegistry[]
+}
+
+model Schedule {
+  id          String    @id @default(uuid())
+  day_of_week String
+  start_hour  Int
+  end_hour    Int
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  arms        ArmRegistry[]
+}
+
+model ArmRegistry {
+  id          String    @id @default(uuid())
+  ad_set_id   String
+  creative_id String
+  audience_id String
+  schedule_id String
+  status      String    @default("LEARNING") // LEARNING, ACTIVE, PAUSED, EXHAUSTED
+  is_control  Boolean   @default(false)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  ad_set      AdSet     @relation(fields: [ad_set_id], references: [id])
+  creative    Creative  @relation(fields: [creative_id], references: [id])
+  audience    Audience  @relation(fields: [audience_id], references: [id])
+  schedule    Schedule  @relation(fields: [schedule_id], references: [id])
+
+  daily_performance  PerformanceDaily[]
+  hourly_performance PerformanceHourly[]
+  lead_quality       LeadQuality[]
+  recommended_actions RecommendedAction[]
+}
+
+model PerformanceDaily {
+  id          String    @id @default(uuid())
+  arm_id      String
+  date        DateTime
+  spend       Float     @default(0)
+  impressions Int       @default(0)
+  clicks      Int       @default(0)
+  leads       Int       @default(0)
+  cpa         Float     @default(0)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  arm         ArmRegistry @relation(fields: [arm_id], references: [id])
+}
+
+model PerformanceHourly {
+  id          String    @id @default(uuid())
+  arm_id      String
+  date        DateTime
+  hour        Int
+  spend       Float     @default(0)
+  leads       Int       @default(0)
+  cpa         Float     @default(0)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  arm         ArmRegistry @relation(fields: [arm_id], references: [id])
+}
+
+model PerformanceCreative {
+  id            String    @id @default(uuid())
+  creative_id   String
+  date          DateTime
+  ctr           Float     @default(0)
+  cvr           Float     @default(0)
+  fatigue_score Float     @default(0)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+
+  creative      Creative  @relation(fields: [creative_id], references: [id])
+}
+
+model LeadQuality {
+  id          String    @id @default(uuid())
+  arm_id      String
+  lead_id     String    @unique
+  status      String    @default("PENDING") // VALID, INVALID, PENDING
+  revenue     Float     @default(0)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  arm         ArmRegistry @relation(fields: [arm_id], references: [id])
+}
+
+model AutomationRule {
+  id             String    @id @default(uuid())
+  name           String
+  condition_json String    // JSON string
+  action_type    String    // PAUSE, BUDGET_UP, BUDGET_DOWN
+  is_active      Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  deleted_at     DateTime?
+
+  recommended_actions RecommendedAction[]
+}
+
+model RecommendedAction {
+  id          String    @id @default(uuid())
+  rule_id     String
+  arm_id      String
+  action_type String
+  reason      String
+  status      String    @default("PENDING") // PENDING, APPROVED, REJECTED, EXECUTED, FAILED
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  rule        AutomationRule @relation(fields: [rule_id], references: [id])
+  arm         ArmRegistry    @relation(fields: [arm_id], references: [id])
+  
+  action_logs ActionLog[]
+  user_approvals UserApproval[]
+}
+
+model ActionLog {
+  id                    String    @id @default(uuid())
+  recommended_action_id String
+  executor              String    // BOT, USER
+  status                String    // SUCCESS, FAIL
+  error_message         String?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  deleted_at            DateTime?
+
+  recommended_action    RecommendedAction @relation(fields: [recommended_action_id], references: [id])
+}
+
+model UserApproval {
+  id                    String    @id @default(uuid())
+  recommended_action_id String
+  user_id               String
+  approved_at           DateTime  @default(now())
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  deleted_at            DateTime?
+
+  recommended_action    RecommendedAction @relation(fields: [recommended_action_id], references: [id])
+}
+
+model CrawlerLog {
+  id             String    @id @default(uuid())
+  session_id     String
+  status         String    // RUNNING, SUCCESS, FAIL
+  screenshot_url String?
+  error_trace    String?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  deleted_at     DateTime?
+}
+
+model SelectorRegistry {
+  id             String    @id @default(uuid())
+  page_name      String
+  element_name   String
+  selector_value String
+  version        Int       @default(1)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  deleted_at     DateTime?
+}
+
+model CrawlerJob {
+  id           String    @id @default(uuid())
+  job_type     String    // e.g., "SYNC_CAMPAIGNS", "EXECUTE_ACTION"
+  payload      String    // JSON string containing job parameters
+  status       String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  result       String?   // JSON string containing job results
+  error        String?   // Error message if failed
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  started_at   DateTime?
+  completed_at DateTime?
+}
