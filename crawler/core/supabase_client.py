@@ -14,42 +14,85 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 def upsert_campaigns(campaigns: list[dict]):
-    """캠페인 데이터 upsert"""
+    """캠페인 데이터 upsert (중복시 업데이트)"""
     if not campaigns:
         return
-    result = supabase.table("campaigns").upsert(campaigns, on_conflict="toss_campaign_id").execute()
-    print(f"[DB] campaigns: {len(result.data)}건 저장")
-    return result.data
+    try:
+        result = supabase.table("campaigns").upsert(
+            campaigns, on_conflict="toss_campaign_id"
+        ).execute()
+        print(f"[DB] campaigns: {len(result.data)}건 저장")
+        return result.data
+    except Exception as e:
+        print(f"[DB] campaigns upsert 에러: {e}")
+        # 개별 건으로 재시도
+        for c in campaigns:
+            try:
+                supabase.table("campaigns").upsert(
+                    c, on_conflict="toss_campaign_id"
+                ).execute()
+            except:
+                pass
+        return []
 
 
 def upsert_ad_sets(ad_sets: list[dict]):
     """광고세트 데이터 upsert"""
     if not ad_sets:
         return
-    result = supabase.table("ad_sets").upsert(ad_sets, on_conflict="toss_adset_id").execute()
-    print(f"[DB] ad_sets: {len(result.data)}건 저장")
-    return result.data
+    try:
+        result = supabase.table("ad_sets").upsert(
+            ad_sets, on_conflict="toss_adset_id"
+        ).execute()
+        print(f"[DB] ad_sets: {len(result.data)}건 저장")
+        return result.data
+    except Exception as e:
+        print(f"[DB] ad_sets upsert 에러: {e}")
+        for a in ad_sets:
+            try:
+                supabase.table("ad_sets").upsert(
+                    a, on_conflict="toss_adset_id"
+                ).execute()
+            except:
+                pass
+        return []
 
 
 def upsert_creatives(creatives: list[dict]):
     """소재 데이터 upsert"""
     if not creatives:
         return
-    result = supabase.table("creatives").upsert(creatives, on_conflict="toss_creative_id").execute()
-    print(f"[DB] creatives: {len(result.data)}건 저장")
-    return result.data
+    try:
+        result = supabase.table("creatives").upsert(
+            creatives, on_conflict="toss_creative_id"
+        ).execute()
+        print(f"[DB] creatives: {len(result.data)}건 저장")
+        return result.data
+    except Exception as e:
+        print(f"[DB] creatives upsert 에러: {e}")
+        return []
 
 
-def insert_performance(table: str, data: list[dict]):
+def insert_performance(data: list[dict]):
     """성과 데이터 삽입 (중복 무시)"""
     if not data:
         return
-    result = supabase.table(table).insert(data).execute()
-    print(f"[DB] {table}: {len(result.data)}건 삽입")
-    return result.data
+    try:
+        result = supabase.table("performance_daily").upsert(
+            data, on_conflict="date,toss_adset_id"
+        ).execute()
+        print(f"[DB] performance_daily: {len(result.data)}건 저장")
+        return result.data
+    except Exception as e:
+        print(f"[DB] performance 저장 에러: {e}")
+        return []
 
 
 def insert_crawler_log(log: dict):
     """크롤러 실행 로그 저장"""
-    result = supabase.table("crawler_logs").insert(log).execute()
-    return result.data
+    try:
+        result = supabase.table("crawler_logs").insert(log).execute()
+        return result.data
+    except Exception as e:
+        print(f"[DB] crawler_log 에러: {e}")
+        return []

@@ -15,16 +15,25 @@ class BasePage:
     def __init__(self, page: Page):
         self.page = page
 
-    def safe_goto(self, url: str, wait_until: str = "networkidle", timeout: int = 30000):
-        """안전한 페이지 이동"""
+    def safe_goto(self, url: str, wait_until: str = "commit", timeout: int = 60000):
+        """안전한 페이지 이동 (SPA 대응)"""
         try:
             self.page.goto(url, wait_until=wait_until, timeout=timeout)
-            self._human_delay()
-            return True
         except PlaywrightTimeout:
-            print(f"[!] 페이지 로딩 타임아웃: {url}")
-            self._save_screenshot("timeout")
-            return False
+            print(f"[!] 페이지 이동 타임아웃, 하지만 계속 진행합니다: {url}")
+        
+        # SPA 렌더링 대기 — JS가 DOM을 그릴 시간 확보
+        time.sleep(8)
+        
+        # 의미 있는 콘텐츠가 로딩될 때까지 추가 대기
+        try:
+            self.page.wait_for_load_state("domcontentloaded", timeout=15000)
+        except:
+            pass
+        
+        self._human_delay()
+        self._save_screenshot("page")
+        return True
 
     def safe_click(self, selector: str, timeout: int = 5000):
         """안전한 클릭 (존재 확인 후)"""
