@@ -1,21 +1,20 @@
 """
 CampaignPage — 토스애즈 캠페인/광고세트/소재 데이터 수집
 
-토스애즈 페이지 흐름:
-1. 로그인 후 → "내 광고계정" 페이지 (계정 선택)
-2. 광고계정 클릭 → advertiser/{id}/display-ads (캠페인 목록)
-3. 캠페인 클릭 → 광고세트 목록
-4. 광고세트 클릭 → 소재 목록
+실제 토스애즈 DOM 구조 (스크린샷 기반):
+- 캠페인 탭: 테이블에 캠페인ID, 이름, 상태, 예산, 소진비용 표시
+- 광고세트 탭: 테이블에 광고세트ID, 이름, 노출상태, 상위캠페인, 광고유형 등
+- 소재 탭: 소재 목록
 
-데이터 수집은 주로 API 인터셉트 + DOM 파싱 혼합
+네비게이션 흐름:
+1. 로그인 → "내 광고계정" → 0105명률DB 클릭
+2. 대시보드 → 사이드바 "배너" 클릭 → display-ads
+3. 캠페인/광고세트/소재 탭 전환
 """
-import json
 import re
-import uuid
 import time
-from datetime import datetime
 from .base_page import BasePage
-from ..core.supabase_client import upsert_campaigns, upsert_ad_sets, upsert_creatives
+from ..core.supabase_client import upsert_campaigns, upsert_ad_sets
 
 ADS_BASE_URL = "https://ads-platform.toss.im"
 
@@ -23,201 +22,285 @@ ADS_BASE_URL = "https://ads-platform.toss.im"
 class CampaignPage(BasePage):
 
     def select_ad_account(self, account_name: str = None):
-        """광고계정 선택 (내 광고계정 페이지에서)"""
+        """광고계정 선택"""
         print("[→] 광고계정 선택 중...")
-        
         page_text = self.page.inner_text("body")
         
-        if "내 광고계정" in page_text or "비즈니스 그룹" in page_text:
-            print("[✓] 광고계정 선택 페이지 감지")
-            
-            # 특정 계정 이름으로 찾기 (0105명률DB가 라이브 광고 계정)
-            target_name = account_name or "0105명률DB"
-            account_el = self.page.query_selector(f"text={target_name}")
-            
-            if not account_el:
-                # a 태그에서 advertiser 링크 찾기 → 두 번째 계정 시도
-                account_links = self.page.query_selector_all("a[href*='/advertiser/']")
-                if len(account_links) >= 2:
-                    account_el = account_links[1]  # 두 번째 계정
-                    print(f"[→] 두 번째 광고계정 선택")
-                elif account_links:
-                    account_el = account_links[0]
-                    print(f"[→] 첫 번째 광고계정 선택")
-            
-            if account_el:
-                account_el.click()
-                print("[✓] 광고계정 클릭 완료")
-                time.sleep(8)  # SPA 로딩 대기
-                self._save_screenshot("account_selected")
-                return True
-            else:
-                # 텍스트가 있는 모든 요소 중 클릭 가능한 것 찾기
-                all_els = self.page.query_selector_all("[class*='account'], [class*='item']")
-                for el in all_els:
-                    t = el.inner_text()
-                    if "명률" in t and "비즈니스" not in t:
-                        el.click()
-                        print(f"[✓] '{t.strip()[:30]}' 클릭")
-                        time.sleep(8)
-                        return True
-                print("[!] 클릭할 광고계정을 찾을 수 없습니다.")
-                self._save_screenshot("no_account_found")
-                return False
-        else:
+        if "내 광고계정" not in page_text and "비즈니스 그룹" not in page_text:
             print("[→] 이미 광고계정 내부에 있습니다.")
             return True
+        
+        print("[✓] 광고계정 선택 페이지 감지")
+        target = account_name or "0105명률DB"
+        try:
+            loc = self.page.get_by_text(target, exact=True)
+            el = loc.first.element_handle() if loc.count() > 0 else None
+        except:
+            el = None
+        
+        if not el:
+            links = self.page.query_selector_all("a[href*='/advertiser/']")
+            el = links[1] if len(links) >= 2 else (links[0] if links else None)
+        
+        if el:
+            el.click()
+            print("[✓] 광고계정 클릭 완료")
+            time.sleep(8)
+            return True
+        
+        print("[!] 광고계정을 찾을 수 없습니다.")
+        return False
+
+    def _nav_to_display_ads(self):
+        """display-ads 페이지로 이동"""
+        current_url = self.page.url
+        if "display-ads" in current_url:
+            return True
+        
+        # Strategy 1: Playwright locator로 사이드바 "배너" 클릭 (SPA 내부 라우팅)
+        print("[→] 사이드바 '배너' 메뉴 클릭 시도...")
+        try:
+            # "배너" 텍스트가 포함된 요소 클릭 (사이드바)
+            banner_loc = self.page.locator("text=배너").first
+            if banner_loc.is_visible(timeout=3000):
+                banner_loc.click()
+                time.sleep(8)
+                if "display-ads" in self.page.url:
+                    print("[✓] 사이드바 '배너' 클릭 → display-ads 도달")
+                    return True
+                print(f"[!] 클릭 후 URL: {self.page.url}")
+        except Exception as e:
+            print(f"[!] 배너 locator 에러: {e}")
+        
+        # Strategy 2: 모든 a 태그에서 display-ads 링크 찾기
+        all_links = self.page.query_selector_all("a")
+        for a in all_links:
+            href = a.get_attribute("href") or ""
+            if "display-ads" in href:
+                a.click()
+                time.sleep(8)
+                print(f"[✓] display-ads 링크 클릭: {href}")
+                return True
+        
+        # Strategy 3: URL 직접 이동 + 추가 대기
+        if "/advertiser" in current_url:
+            display_url = f"{ADS_BASE_URL}/advertiser/display-ads"
+            print(f"[→] display-ads 직접 이동: {display_url}")
+            self.page.goto(display_url, wait_until="networkidle", timeout=30000)
+            time.sleep(10)
+            print(f"[→] 이동 후 URL: {self.page.url}")
+            return True
+        
+        print("[!] display-ads 페이지 이동 실패")
+        return False
 
     def sync_all(self):
-        """캠페인 → 광고세트 동기화"""
+        """전체 동기화: 계정선택 → display-ads → 캠페인 → 광고세트"""
         print(f"\n{'='*50}")
-        print("[SYNC] 캠페인/광고세트/소재 동기화 시작")
+        print("[SYNC] 캠페인/광고세트 동기화 시작")
         print(f"{'='*50}")
         
-        # Step 1: 광고계정 선택
+        # Step 1: 계정 선택 (display-ads URL 접근 시 계정선택 트리거됨)
         self.select_ad_account()
         
-        # Step 2: 현재 페이지 확인
-        self._save_screenshot("before_sync")
-        print(f"[DEBUG] 현재 URL: {self.page.url}")
+        # Step 2: 계정 선택 후 display-ads로 다시 이동
+        #   계정 선택 후 dashboard로 리다이렉트되므로 display-ads를 다시 방문
+        display_url = f"{ADS_BASE_URL}/advertiser/display-ads"
+        print(f"[→] display-ads 재이동: {display_url}")
+        self.safe_goto(display_url)
+        time.sleep(5)
         
-        # Step 3: 사이드바에서 "배너" 클릭 → display-ads 페이지로 이동
-        current_url = self.page.url
-        if "display-ads" not in current_url:
-            print("[→] 사이드바에서 '배너' 메뉴 클릭...")
-            # 사이드바의 "배너" 링크 클릭 (href에 display-ads 포함)
-            banner_link = self.page.query_selector("a[href*='display-ads']")
-            if not banner_link:
-                # 텍스트로 찾기
-                banner_link = self.page.query_selector("nav >> text=배너")
-                if not banner_link:
-                    banner_link = self.page.query_selector("text=배너")
-            
-            if banner_link:
-                banner_link.click()
-                print("[✓] '배너' 메뉴 클릭 완료")
-                time.sleep(8)
-                self._save_screenshot("display_ads_navigated")
-            else:
-                # URL 직접 이동
-                adv_match = re.search(r'/advertiser/(\d+)', current_url)
-                if adv_match:
-                    display_url = f"{ADS_BASE_URL}/advertiser/{adv_match.group(1)}/display-ads"
-                    print(f"[→] 직접 URL 이동: {display_url}")
-                    self.safe_goto(display_url)
-                else:
-                    print("[!] display-ads 페이지를 찾을 수 없습니다.")
-        
-        # Step 4: 광고세트 탭 클릭
-        print("[→] '광고세트' 탭 확인 중...")
-        adset_tab = self.page.query_selector("text=광고세트")
-        if adset_tab:
-            adset_tab.click()
-            print("[✓] '광고세트' 탭 클릭")
+        # 계정 선택 페이지가 다시 뜨면 즉시 계정 클릭
+        body = self.page.inner_text("body")
+        if "내 광고계정" in body:
+            self.select_ad_account()
+            self.safe_goto(display_url)
             time.sleep(5)
-            self._save_screenshot("adset_tab")
         
-        # Step 5: 현재 페이지 분석 & 데이터 수집
-        self._save_screenshot("final_page")
-        page_text = self.page.inner_text("body")
+        self._save_screenshot("display_ads")
         print(f"[DEBUG] URL: {self.page.url}")
+
+        # 3. 캠페인 수집
+        campaigns = self._collect_campaigns()
         
-        campaigns = self._collect_from_page(page_text)
-        
-        if campaigns:
-            print(f"[✓] {len(campaigns)}건 동기화 완료")
-        else:
-            if "내역이 없어요" in page_text:
-                print("[!] '내역이 없어요' — 이 계정에 캠페인이 없습니다.")
-            else:
-                print(f"[DEBUG] 텍스트 (300자): {page_text[:300]}")
-        
+        # 4. 광고세트 탭 클릭 → 수집
+        self._click_tab("광고세트")
+        ad_sets = self._collect_ad_sets()
+
+        print(f"\n[SYNC 결과] 캠페인: {len(campaigns)}건, 광고세트: {len(ad_sets)}건")
         return True
 
-    def _collect_from_page(self, page_text: str) -> list[dict]:
-        """현재 페이지에서 캠페인/광고세트 정보 추출"""
+    def _click_tab(self, tab_name: str):
+        """탭 클릭 (캠페인/광고세트/소재)"""
+        try:
+            loc = self.page.get_by_text(tab_name, exact=True)
+            tab = loc.first.element_handle() if loc.count() > 0 else None
+        except:
+            tab = None
+        if tab:
+            tab.click()
+            print(f"[✓] '{tab_name}' 탭 클릭")
+            time.sleep(5)
+            self._save_screenshot(f"tab_{tab_name}")
+        else:
+            print(f"[!] '{tab_name}' 탭을 찾을 수 없습니다.")
+
+    def _collect_campaigns(self) -> list:
+        """캠페인 테이블에서 데이터 수집"""
+        print("\n[→] 캠페인 수집 중...")
         campaigns = []
         
-        # 테이블 행 검색
-        try:
-            rows = self.page.query_selector_all("table tbody tr")
-            if rows:
-                print(f"[→] 테이블 발견: {len(rows)}행")
-                for row in rows:
-                    self._parse_campaign_row(row, campaigns)
-        except Exception as e:
-            print(f"[!] 테이블 파싱 에러: {e}")
-
-        # 테이블이 없으면 리스트/카드 형식 검색
-        if not campaigns:
-            try:
-                items = self.page.query_selector_all("[class*='item'], [class*='row'], [class*='card']")
-                if items:
-                    print(f"[→] 리스트 아이템 발견: {len(items)}개")
-                    for item in items:
-                        self._parse_list_item(item, campaigns)
-            except Exception as e:
-                print(f"[!] 리스트 파싱 에러: {e}")
-
-        # 링크에서 캠페인 ID 추출
-        if not campaigns:
-            try:
-                links = self.page.query_selector_all("a[href*='contract']")
-                for link in links:
-                    href = link.get_attribute("href") or ""
-                    text = link.inner_text().strip()
-                    match = re.search(r'contract(?:Ids?|/)?[=/]?(\d+)', href)
-                    if match and text:
-                        campaign_id = match.group(1)
-                        campaigns.append({
-                            "toss_campaign_id": campaign_id,
-                            "name": text[:100],
-                            "status": "ON",
-                            "budget": 0,
-                        })
-                        print(f"  [캠페인] {text[:50]} (ID: {campaign_id})")
-            except Exception as e:
-                print(f"[!] 링크 파싱 에러: {e}")
-
+        # 테이블 행 읽기
+        rows = self.page.query_selector_all("table tbody tr")
+        if not rows:
+            # 테이블이 없으면 div 기반 리스트 시도
+            rows = self.page.query_selector_all("[role='row']")
+        
+        print(f"  테이블 행: {len(rows)}개")
+        
+        for row in rows:
+            text = row.inner_text().strip()
+            if not text or "전체 캠페인" in text:
+                continue
+            
+            # 캠페인 ID 추출 (6자리 숫자)
+            cells = row.query_selector_all("td")
+            if not cells or len(cells) < 2:
+                continue
+            
+            # 첫번째 셀: 체크박스, 두번째: ID, 세번째: 이름
+            campaign_id = None
+            campaign_name = None
+            status = "OFF"
+            budget = 0
+            spend = 0
+            
+            for cell in cells:
+                cell_text = cell.inner_text().strip()
+                
+                # 6자리 숫자 = 캠페인 ID
+                if re.match(r'^\d{5,7}$', cell_text) and not campaign_id:
+                    campaign_id = cell_text
+                
+                # 한글 포함 긴 텍스트 = 캠페인 이름
+                elif len(cell_text) > 5 and not campaign_name and not cell_text.replace(',','').replace('원','').replace('₩','').isdigit():
+                    if any(c >= '\uac00' for c in cell_text):  # 한글 포함
+                        campaign_name = cell_text[:100]
+                
+                # ON/OFF 상태
+                if "집행중" in cell_text or "ON" in cell_text.upper():
+                    status = "ON"
+                
+                # 금액 (콤마 포함 숫자 + 원)
+                money = re.search(r'([\d,]+)원', cell_text)
+                if money:
+                    val = int(money.group(1).replace(',', ''))
+                    if val > 100000 and budget == 0:
+                        budget = val
+                    elif val > 0:
+                        spend = val
+            
+            # ON 토글 확인
+            toggle = row.query_selector("[class*='toggle'], [class*='switch']")
+            if toggle:
+                toggle_text = toggle.inner_text() if toggle else ""
+                toggle_class = toggle.get_attribute("class") or ""
+                if "on" in toggle_class.lower() or "ON" in toggle_text:
+                    status = "ON"
+            
+            if campaign_id:
+                data = {
+                    "toss_campaign_id": campaign_id,
+                    "name": campaign_name or f"캠페인_{campaign_id}",
+                    "status": status,
+                    "budget": budget,
+                }
+                campaigns.append(data)
+                print(f"  [캠페인] {campaign_name or campaign_id} (ID:{campaign_id}) 상태:{status} 예산:₩{budget:,}")
+        
         if campaigns:
             upsert_campaigns(campaigns)
+        else:
+            body = self.page.inner_text("body")
+            if "내역이 없어요" in body:
+                print("  [!] 캠페인 내역이 없습니다.")
+            else:
+                print(f"  [DEBUG] 텍스트 앞200자: {body[:200]}")
         
         return campaigns
 
-    def _parse_campaign_row(self, row, campaigns: list):
-        """테이블 행에서 캠페인 데이터 추출"""
-        text = row.inner_text().strip()
-        if not text:
-            return
+    def _collect_ad_sets(self) -> list:
+        """광고세트 테이블에서 데이터 수집"""
+        print("\n[→] 광고세트 수집 중...")
+        ad_sets = []
         
-        link = row.query_selector("a")
-        if link:
-            href = link.get_attribute("href") or ""
-            name = link.inner_text().strip()
+        rows = self.page.query_selector_all("table tbody tr")
+        if not rows:
+            rows = self.page.query_selector_all("[role='row']")
+        
+        print(f"  테이블 행: {len(rows)}개")
+        
+        for row in rows:
+            text = row.inner_text().strip()
+            if not text or "전체 광고세트" in text:
+                continue
             
-            # ID 추출
-            match = re.search(r'(\d{5,})', href)
-            if match:
-                campaigns.append({
-                    "toss_campaign_id": match.group(1),
-                    "name": name[:100],
-                    "status": "ON",
-                    "budget": 0,
-                })
-                print(f"  [캠페인] {name[:50]} (ID: {match.group(1)})")
-
-    def _parse_list_item(self, item, campaigns: list):
-        """리스트/카드 아이템에서 데이터 추출"""
-        text = item.inner_text().strip()
-        link = item.query_selector("a")
+            cells = row.query_selector_all("td")
+            if not cells or len(cells) < 2:
+                continue
+            
+            adset_id = None
+            adset_name = None
+            status = "OFF"
+            campaign_name = None
+            
+            for cell in cells:
+                cell_text = cell.inner_text().strip()
+                
+                # 6~7자리 숫자 = 광고세트 ID
+                if re.match(r'^\d{5,7}$', cell_text) and not adset_id:
+                    adset_id = cell_text
+                
+                # 긴 한글 텍스트 = 광고세트 이름 (보통 가장 긴 텍스트)
+                elif len(cell_text) > 10 and not adset_name:
+                    if any(c >= '\uac00' for c in cell_text) or '_' in cell_text:
+                        adset_name = cell_text[:150]
+                
+                # 상위 캠페인명 (명률1차 0105 형태)
+                elif "명률" in cell_text and len(cell_text) < 30:
+                    campaign_name = cell_text
+                
+                # ON/OFF
+                if cell_text.upper() == "ON":
+                    status = "ON"
+            
+            # 토글 확인
+            toggle = row.query_selector("[class*='toggle'], [class*='switch']")
+            if toggle:
+                tc = (toggle.get_attribute("class") or "").lower()
+                if "on" in tc or "active" in tc or "checked" in tc:
+                    status = "ON"
+            
+            if adset_id:
+                data = {
+                    "toss_adset_id": adset_id,
+                    "name": adset_name or f"광고세트_{adset_id}",
+                    "status": status,
+                    "target_cpa": 0,
+                }
+                # toss_campaign_id 추가 (상위 캠페인 연결용)
+                if campaign_name:
+                    data["toss_campaign_id"] = campaign_name
+                
+                ad_sets.append(data)
+                status_icon = "🟢" if status == "ON" else "⚪"
+                print(f"  {status_icon} [{adset_id}] {(adset_name or '')[:50]}")
         
-        if link:
-            href = link.get_attribute("href") or ""
-            match = re.search(r'(\d{5,})', href)
-            if match and text:
-                campaigns.append({
-                    "toss_campaign_id": match.group(1),
-                    "name": text[:100],
-                    "status": "ON",
-                    "budget": 0,
-                })
+        if ad_sets:
+            upsert_ad_sets(ad_sets)
+        else:
+            body = self.page.inner_text("body")
+            if "내역이 없어요" in body:
+                print("  [!] 광고세트 내역이 없습니다.")
+        
+        return ad_sets
