@@ -58,13 +58,25 @@ class BrowserManager:
             print(f"[✓] 세션 저장 완료: {STATE_PATH}")
 
     def close(self):
-        """브라우저 종료"""
+        """브라우저 종료 (이중 close 방지)"""
         if self.context:
-            self.context.close()
+            try:
+                self.context.close()
+            except:
+                pass
+            self.context = None
         if self.browser:
-            self.browser.close()
+            try:
+                self.browser.close()
+            except:
+                pass
+            self.browser = None
         if self.playwright:
-            self.playwright.stop()
+            try:
+                self.playwright.stop()
+            except:
+                pass
+            self.playwright = None
         print("[✓] 브라우저 종료")
 
     def is_session_valid(self) -> bool:

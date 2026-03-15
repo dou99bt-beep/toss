@@ -102,23 +102,41 @@ def main():
 
     if args.loop:
         interval = 3600  # 1시간
-        print(f"[♻] 반복 모드: {interval}초 간격")
+        print(f"[♻] 반복 모드: {interval//60}분 간격")
         
-        while True:
+        run_count = 0
+        fail_count = 0
+        max_consecutive_fails = 5  # 연속 5회 실패 시 종료
+        
+        while fail_count < max_consecutive_fails:
+            run_count += 1
+            print(f"\n{'='*50}")
+            print(f"[♻] 실행 #{run_count} (연속 실패: {fail_count})")
+            print(f"{'='*50}")
+            
             browser_manager = BrowserManager(headless=args.headless)
             try:
-                run_once(browser_manager, args)
+                success = run_once(browser_manager, args)
+                if success:
+                    fail_count = 0  # 성공 시 리셋
+                else:
+                    fail_count += 1
             except Exception as e:
                 print(f"[!] 루프 에러: {e}")
+                fail_count += 1
             finally:
                 try:
                     browser_manager.close()
                 except:
                     pass
             
-            next_run = datetime.now().strftime('%H:%M:%S')
-            print(f"\n[⏰] 다음 수집: {interval//60}분 후 ({next_run})")
+            from datetime import timedelta
+            next_time = (datetime.now() + timedelta(seconds=interval)).strftime('%H:%M:%S')
+            print(f"\n[⏰] 다음 수집: {next_time} ({interval//60}분 후)")
+            print(f"[📊] 누적: {run_count}회 실행, 연속실패: {fail_count}회")
             time.sleep(interval)
+        
+        print(f"\n[✗] 연속 {max_consecutive_fails}회 실패. 크롤러를 종료합니다.")
     else:
         browser_manager = BrowserManager(headless=args.headless)
         run_once(browser_manager, args)
