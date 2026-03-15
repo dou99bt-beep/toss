@@ -1,0 +1,161 @@
+[
+  {
+    "url": "https://business-accounts.toss.im/wgslog",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "resultType",
+      "success"
+    ],
+    "sample": "{\"resultType\": \"SUCCESS\", \"success\": {\"sessionId\": \"ab3175bb-0f98-46da-a0ff-542cf8877f50\"}}"
+  },
+  {
+    "url": "https://business-accounts.toss.im/wgslog",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "resultType",
+      "success"
+    ],
+    "sample": "{\"resultType\": \"SUCCESS\", \"success\": {\"sessionId\": \"ab3175bb-0f98-46da-a0ff-542cf8877f50\"}}"
+  },
+  {
+    "url": "https://ads-platform.toss.im/api-public/v3/ads-platform/advertisers/auth/toss-business/login/v2",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "resultType",
+      "success"
+    ],
+    "sample": "{\"resultType\": \"SUCCESS\", \"success\": {\"login\": true, \"reason\": \"key-biz-user-no 존재, code 존재하지 않음\"}}"
+  },
+  {
+    "url": "https://business-accounts.toss.im/user/me",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "resultType",
+      "success"
+    ],
+    "sample": "{\"resultType\": \"SUCCESS\", \"success\": {\"id\": 288854, \"businessUserNo\": 288854, \"gaNo\": 16857381, \"email\": \"2882@daum.net\", \"phone\": \"01026060357\", \"birthDay\": \"19771230\", \"name\": \"진성호\", \"gender\": \"MALE\", \"includeHash\": true, \"nationality\": \"LOCAL\", \"regTs\": \"2025-11-28T15:13:27\", \"businessUserNoHash\": \"e5d54d73907625cc341fd4f182d8e1dd80045f5ffd6c070cc24a81eccaf70adf\"}}"
+  },
+  {
+    "url": "https://ads-platform.toss.im/api-public/v3/ads-platform/advertisers/business-groups/all-groups",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "resultType",
+      "success"
+    ],
+    "sample": "{\"resultType\": \"SUCCESS\", \"success\": {\"myBusinessGroupWithAffiliates\": [{\"id\": 205273, \"advertiserId\": 217941, \"businessGroupId\": 205273, \"name\": \"명률\", \"businessGroupRole\": null, \"companyName\": \"몬스터랩\", \"companyBizRegNo\": \"5213901355\", \"isAgency\": false, \"isMember\": true, \"isMaster\": true, \"isInReview\": false, \"isApproved\": true, \"advertiseGroups\": [{\"id\": 66239, \"advertiserId\": 217941, \"advertiseGroupId\": 66239, \"businessGroupId\": 205273, \"name\": \"명륜1\", \"executionBusinessRegNo\": \"5213901355\", \"a"
+  },
+  {
+    "url": "https://business-accounts.toss.im/wgslog",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "resultType",
+      "success"
+    ],
+    "sample": "{\"resultType\": \"SUCCESS\", \"success\": {\"sessionId\": \"ab3175bb-0f98-46da-a0ff-542cf8877f50\"}}"
+  },
+  {
+    "url": "https://business-accounts.toss.im/user/me",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "resultType",
+      "success"
+    ],
+    "sample": "{\"resultType\": \"SUCCESS\", \"success\": {\"id\": 288854, \"businessUserNo\": 288854, \"gaNo\": 16857381, \"email\": \"2882@daum.net\", \"phone\": \"01026060357\", \"birthDay\": \"19771230\", \"name\": \"진성호\", \"gender\": \"MALE\", \"includeHash\": true, \"nationality\": \"LOCAL\", \"regTs\": \"2025-11-28T15:13:27\", \"businessUserNoHash\": \"e5d54d73907625cc341fd4f182d8e1dd80045f5ffd6c070cc24a81eccaf70adf\"}}"
+  },
+  {
+    "url": "https://business-accounts.toss.im/notifications?limit=20",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "resultType",
+      "success"
+    ],
+    "sample": "{\"resultType\": \"SUCCESS\", \"success\": {\"contents\": [{\"contentId\": \"business:INBOX-b257553e-caf7-4cf4-83fa-4284c5a929a0\", \"title\": \"토스애즈 광고센터\", \"content\": \"광고가 중단되지 않게 기존_광고세트(리스트)_자동입찰 전환 최대화_타켓지정_항상노출 광고세트의 일예산을 늘려보세요.\", \"contentReachType\": \"FUNCTIONAL\", \"createdAt\": \"2026-03-12T09:00:48\", \"linkUri\": \"supertoss://lab?url=https%3A%2F%2Fads-platform.toss.im%2F&toss_referrer=1076_inbox_business_2178&contentId=business%3AINBOX-b257553e-caf7-4cf4-83fa-4284c5a929a0\", \"webLinkUri\": \"https://ads-platfor"
+  },
+  {
+    "url": "https://business-accounts.toss.im/notifications?limit=20",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "resultType",
+      "success"
+    ],
+    "sample": "{\"resultType\": \"SUCCESS\", \"success\": {\"contents\": [{\"contentId\": \"business:INBOX-b257553e-caf7-4cf4-83fa-4284c5a929a0\", \"title\": \"토스애즈 광고센터\", \"content\": \"광고가 중단되지 않게 기존_광고세트(리스트)_자동입찰 전환 최대화_타켓지정_항상노출 광고세트의 일예산을 늘려보세요.\", \"contentReachType\": \"FUNCTIONAL\", \"createdAt\": \"2026-03-12T09:00:48\", \"linkUri\": \"supertoss://lab?url=https%3A%2F%2Fads-platform.toss.im%2F&toss_referrer=1076_inbox_business_2178&contentId=business%3AINBOX-b257553e-caf7-4cf4-83fa-4284c5a929a0\", \"webLinkUri\": \"https://ads-platfor"
+  },
+  {
+    "url": "https://business-accounts.toss.im/notifications?limit=20",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "resultType",
+      "success"
+    ],
+    "sample": "{\"resultType\": \"SUCCESS\", \"success\": {\"contents\": [{\"contentId\": \"business:INBOX-b257553e-caf7-4cf4-83fa-4284c5a929a0\", \"title\": \"토스애즈 광고센터\", \"content\": \"광고가 중단되지 않게 기존_광고세트(리스트)_자동입찰 전환 최대화_타켓지정_항상노출 광고세트의 일예산을 늘려보세요.\", \"contentReachType\": \"FUNCTIONAL\", \"createdAt\": \"2026-03-12T09:00:48\", \"linkUri\": \"supertoss://lab?url=https%3A%2F%2Fads-platform.toss.im%2F&toss_referrer=1076_inbox_business_2178&contentId=business%3AINBOX-b257553e-caf7-4cf4-83fa-4284c5a929a0\", \"webLinkUri\": \"https://ads-platfor"
+  },
+  {
+    "url": "https://api.channel.io/front/v8/elastic/plugins/5eb6e862-fa41-4018-b984-47710ac0327d/boot",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "channel",
+      "plugin",
+      "sessionJWT",
+      "namespace",
+      "routeInfo",
+      "veilId",
+      "cookieDomain",
+      "user"
+    ],
+    "sample": "{\"channel\": {\"id\": \"144685\", \"welcomeMessage\": {\"blocks\": [{\"type\": \"text\", \"value\": \"방문해주셔서 감사합니다 :) 무엇을 도와드릴까요?\"}]}, \"createdAt\": 1692847538092, \"updatedAt\": 1764044414213, \"name\": \"토스 비즈니스\", \"botName\": \"토스 비즈니스\", \"color\": \"#e2f0f5\", \"country\": \"KR\", \"domain\": \"toss-business\", \"defaultDomain\": \"yew59\", \"homepageUrl\": \"https://toss.im/\", \"timeZone\": \"Asia/Seoul\", \"showOperatorProfile\": true, \"disableNewChatButton\": false, \"followUpTexting\": true, \"followUpEmail\": false, \"followUpAskName\": true,"
+  },
+  {
+    "url": "https://api.channel.io/front/v8/elastic/plugins/5eb6e862-fa41-4018-b984-47710ac0327d/boot",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "channel",
+      "plugin",
+      "sessionJWT",
+      "namespace",
+      "routeInfo",
+      "veilId",
+      "cookieDomain",
+      "user"
+    ],
+    "sample": "{\"channel\": {\"id\": \"144685\", \"welcomeMessage\": {\"blocks\": [{\"type\": \"text\", \"value\": \"방문해주셔서 감사합니다 :) 무엇을 도와드릴까요?\"}]}, \"createdAt\": 1692847538092, \"updatedAt\": 1764044414213, \"name\": \"토스 비즈니스\", \"botName\": \"토스 비즈니스\", \"color\": \"#e2f0f5\", \"country\": \"KR\", \"domain\": \"toss-business\", \"defaultDomain\": \"yew59\", \"homepageUrl\": \"https://toss.im/\", \"timeZone\": \"Asia/Seoul\", \"showOperatorProfile\": true, \"disableNewChatButton\": false, \"followUpTexting\": true, \"followUpEmail\": false, \"followUpAskName\": true,"
+  },
+  {
+    "url": "https://api.channel.io/front/v8/managers/operators?",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "managers"
+    ],
+    "sample": "{\"managers\": []}"
+  },
+  {
+    "url": "https://api.channel.io/front/v8/channels/144685/operations?",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "channelOperations"
+    ],
+    "sample": "{\"channelOperations\": [{\"id\": \"171603\", \"name\": \"애즈 상담시간\", \"channelId\": \"144685\", \"timeZone\": \"Asia/Seoul\", \"defaultOperation\": false, \"customExpectedResponseDelay\": false, \"expectedResponseDelay\": \"delayed\", \"inOperation\": false, \"operationTimeScheduling\": true, \"operationTimeRanges\": [{\"dayOfWeeks\": [\"tue\", \"mon\", \"wed\", \"thu\"], \"from\": 630, \"to\": 1110}, {\"dayOfWeeks\": [\"fri\"], \"from\": 630, \"to\": 1050}], \"holidays\": [], \"teamIds\": [\"15341\", \"9436\"], \"todayHoliday\": false, \"awayOption\": \"disabl"
+  },
+  {
+    "url": "https://api.channel.io/front/v8/channels/144685/events",
+    "status": 200,
+    "type": "dict",
+    "keys": [
+      "event"
+    ],
+    "sample": "{\"event\": {\"userId\": \"69293cabc8bdb4e3b708\", \"id\": \"69b6dcf2cdccb3a5cbac\", \"channelId\": \"144685\", \"name\": \"PageView\", \"property\": {\"country\": \"KR\", \"os\": \"Windows 10.0\", \"city\": \"경기도 남양주시\", \"session\": 1773591794000, \"ip\": \"218.51.9.73\", \"title\": \"toss ads\", \"url\": \"https://ads-platform.toss.im/advertiser/select-group?redirect=https%3A%2F%2Fads-platform.toss.im%2Fadvertiser%2Fdisplay-ads\", \"browser\": \"AppleWebKit 537.36\", \"page\": \"https://ads-platform.toss.im/advertiser/select-group?redirect=http"
+  }
+]

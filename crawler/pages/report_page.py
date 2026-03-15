@@ -1,16 +1,12 @@
 """
-ReportPage — 성과 데이터 수집
+ReportPage — 성과 데이터 수집 (display-ads 테이블 파싱)
 
-토스애즈 성과 데이터 위치 (스크린샷 분석 결과):
-- 광고세트 탭: 설정 정보만 (노출상태, 캠페인, 유형 등) → 성과 없음
-- 캠페인 상세: /display-ads/v2/contract/{캠페인ID} → 성과 차트/테이블
-- 광고세트 상세: /display-ads/v2/contract/{캠페인ID}/set/{광고세트ID}
-- 대시보드 "배너 성과": 요약 차트 (CTR, 소진비용)
+실제 DOM 분석 결과:
+display-ads 페이지의 캠페인/광고세트 탭 테이블에 성과 컬럼이 포함됨:
+  소진 비용 | 노출 수 | CPM | 도달 수 | 빈도 수 | 클릭 수 | CPC | CTR |
+  잠재고객 수 | 잠재고객 제출당 비용 | ...
 
-수집 전략:
-1. 캠페인 상세 페이지에서 전체 성과 파싱
-2. 개별 광고세트 상세 페이지에서 성과 파싱
-3. 대시보드 요약 데이터 fallback
+inner_text()로 탭 구분된 텍스트를 추출하면 컬럼별 데이터 파싱 가능.
 """
 import re
 import time
@@ -19,29 +15,57 @@ from .base_page import BasePage
 from ..core.supabase_client import insert_performance
 
 ADS_BASE_URL = "https://ads-platform.toss.im"
-CAMPAIGN_ID = "336305"  # 명률1차 0105
+
+# display-ads 테이블 헤더 → 인덱스 매핑
+COLUMN_NAMES = [
+    "checkbox", "id", "name", "status_toggle", "status",
+    "insight", "objective", "period", "budget", "budget_method",
+    "spend", "impressions", "cpm", "reach", "frequency",
+    "clicks", "cpc", "ctr",
+    "leads", "cpl",
+    "plays", "cpplay",
+    "detail_views", "installs", "signups", "cart", "purchases", "delete"
+]
 
 
 class ReportPage(BasePage):
 
     def collect_performance(self, date_str: str = None):
-        """성과 데이터 수집 — 캠페인 상세 페이지에서"""
+        """display-ads 테이블에서 성과 데이터 수집"""
         if date_str is None:
             date_str = datetime.now().strftime("%Y-%m-%d")
 
-        print(f"\n[REPORT] {date_str} 성과 데이터 수집 시작")
+        print(f"\n[REPORT] {date_str} 성과 데이터 수집")
+
+        # display-ads 페이지가 로드된 상태여야 함
+        if "display-ads" not in self.page.url:
+            display_url = f"{ADS_BASE_URL}/advertiser/display-ads"
+            self.safe_goto(display_url)
+            time.sleep(5)
+
+        # 날짜 범위 설정 (URL 파라미터)
+        base = self.page.url.split("?")[0]
+        url = f"{base}?startDate={date_str}&endDate={date_str}"
+        self.safe_goto(url)
+        time.sleep(5)
 
         performances = []
 
-        # Strategy 1: 캠페인 상세 페이지
-        perf = self._collect_from_campaign_detail(date_str)
-        performances.extend(perf)
+        # 캠페인 탭 성과 수집
+        campaign_perf = self._parse_table_performance(date_str, "캠페인")
+        performances.extend(campaign_perf)
 
-        # Strategy 2: 대시보드 요약 데이터 (fallback)
-        if not performances:
-            summary = self._collect_from_dashboard(date_str)
-            if summary:
-                performances.append(summary)
+        # 광고세트 탭으로 전환
+        try:
+            tab = self.page.locator("text=광고세트").first
+            if tab.is_visible(timeout=3000):
+                tab.click()
+                time.sleep(5)
+        except:
+            pass
+
+        adset_perf = self._parse_table_performance(date_str, "광고세트")
+        performances.extend(adset_perf)
 
         if performances:
             try:
@@ -54,151 +78,111 @@ class ReportPage(BasePage):
 
         return performances
 
-    def _collect_from_campaign_detail(self, date_str: str) -> list:
-        """캠페인 상세 페이지에서 성과 수집"""
-        url = f"{ADS_BASE_URL}/display-ads/v2/contract/{CAMPAIGN_ID}"
-        print(f"[→] 캠페인 상세 이동: {url}")
-        self.safe_goto(url)
-        time.sleep(5)
-        self._save_screenshot(f"campaign_detail_{date_str}")
-
+    def _parse_table_performance(self, date_str: str, tab_name: str) -> list:
+        """display-ads 테이블의 행별 성과 데이터 추출"""
         performances = []
-        body = self.page.inner_text("body")
 
-        # 테이블 파싱 시도
         rows = self.page.query_selector_all("table tbody tr")
-        if rows:
-            print(f"  캠페인 상세 테이블 행: {len(rows)}개")
-            for row in rows:
-                perf = self._parse_performance_row(row, date_str)
-                if perf:
-                    performances.append(perf)
+        if not rows:
+            return performances
 
-        # 테이블이 없으면 텍스트에서 숫자 추출
-        if not performances:
-            perf = self._parse_text_metrics(body, date_str)
-            if perf:
+        print(f"  [{tab_name}] 테이블 행: {len(rows)}개")
+
+        for row in rows:
+            text = row.inner_text().strip()
+            if not text:
+                continue
+
+            # 탭으로 구분된 셀 추출
+            cells = text.split("\t")
+            cells = [c.strip() for c in cells if c.strip()]
+
+            if len(cells) < 5:
+                continue
+
+            # ID 찾기 (5~7자리 숫자)
+            entry_id = None
+            entry_name = None
+
+            for c in cells:
+                if re.match(r'^\d{5,7}$', c) and not entry_id:
+                    entry_id = c
+                elif len(c) > 5 and not entry_name and not c.replace(',', '').replace('원', '').isdigit():
+                    if any(ch >= '\uac00' for ch in c) or '_' in c:
+                        entry_name = c[:100]
+
+            if not entry_id:
+                # "전체 캠페인" 요약 행 처리
+                if "전체" in text:
+                    entry_id = "summary"
+                    entry_name = f"전체 {tab_name} 요약"
+                else:
+                    continue
+
+            # 숫자 지표 추출
+            metrics = self._extract_metrics_from_cells(cells)
+
+            if metrics.get("impressions", 0) > 0 or metrics.get("spend", 0) > 0:
+                perf = {
+                    "toss_adset_id": entry_id,
+                    "ad_set_name": entry_name or f"{tab_name}_{entry_id}",
+                    "date": f"{date_str}T00:00:00Z",
+                    "impressions": metrics.get("impressions", 0),
+                    "clicks": metrics.get("clicks", 0),
+                    "leads": metrics.get("leads", 0),
+                    "spend": metrics.get("spend", 0),
+                    "cpa": metrics.get("cpa", 0),
+                    "ctr": metrics.get("ctr", 0),
+                }
                 performances.append(perf)
+                print(f"    [{entry_id}] 소진:₩{perf['spend']:,} 노출:{perf['impressions']:,} "
+                      f"클릭:{perf['clicks']} CTR:{perf['ctr']}%")
 
         return performances
 
-    def _collect_from_dashboard(self, date_str: str) -> dict:
-        """대시보드 배너 성과 요약에서 수집"""
-        url = f"{ADS_BASE_URL}/advertiser/display-ads"
-        self.safe_goto(url)
-        time.sleep(5)
-
-        body = self.page.inner_text("body")
-        return self._parse_text_metrics(body, date_str, adset_id="summary")
-
-    def _parse_performance_row(self, row, date_str: str) -> dict:
-        """테이블 행에서 성과 데이터 추출"""
-        cells = row.query_selector_all("td")
-        if not cells or len(cells) < 3:
-            return None
-
-        texts = []
-        for c in cells:
-            try:
-                texts.append(c.inner_text().strip())
-            except:
-                texts.append("")
-
-        # 광고세트 ID 찾기
-        adset_id = None
-        adset_name = None
-        for t in texts:
-            m = re.match(r'^(\d{5,7})$', t)
-            if m:
-                adset_id = m.group(1)
-                break
-
-        metrics = self._extract_metrics(texts)
-
-        if adset_id and metrics.get("impressions", 0) > 0:
-            perf = {
-                "toss_adset_id": adset_id,
-                "ad_set_name": adset_name or f"광고세트_{adset_id}",
-                "date": f"{date_str}T00:00:00Z",
-                **metrics,
-            }
-            print(f"  [{adset_id}] 노출:{metrics.get('impressions',0):,} "
-                  f"클릭:{metrics.get('clicks',0):,} 소진:₩{metrics.get('spend',0):,}")
-            return perf
-        return None
-
-    def _parse_text_metrics(self, text: str, date_str: str, adset_id: str = None) -> dict:
-        """페이지 텍스트에서 성과 지표 추출"""
+    def _extract_metrics_from_cells(self, cells: list) -> dict:
+        """셀 목록에서 성과 지표 추출 — 패턴 매칭"""
         metrics = {}
 
-        # 노출 (숫자 패턴)
-        m = re.search(r'노출[수\s:]*?([\d,]+)', text)
-        if m:
-            metrics["impressions"] = int(m.group(1).replace(',', ''))
-
-        m = re.search(r'클릭[수\s:]*?([\d,]+)', text)
-        if m:
-            metrics["clicks"] = int(m.group(1).replace(',', ''))
-
-        m = re.search(r'전환[수\s:]*?([\d,]+)', text)
-        if m:
-            metrics["leads"] = int(m.group(1).replace(',', ''))
-
-        m = re.search(r'소진[^₩\d]*([\d,]+)원', text)
-        if not m:
-            m = re.search(r'소진 비용[^₩\d]*([\d,]+)', text)
-        if m:
-            metrics["spend"] = int(m.group(1).replace(',', ''))
-
-        m = re.search(r'CTR[:\s]*([\d.]+)%?', text)
-        if m:
-            metrics["ctr"] = float(m.group(1))
-
-        m = re.search(r'CPA[:\s]*₩?([\d,]+)', text)
-        if m:
-            metrics["cpa"] = int(m.group(1).replace(',', ''))
-
-        if any(v > 0 for v in metrics.values()):
-            return {
-                "toss_adset_id": adset_id or CAMPAIGN_ID,
-                "ad_set_name": "전체 캠페인 요약",
-                "date": f"{date_str}T00:00:00Z",
-                "impressions": metrics.get("impressions", 0),
-                "clicks": metrics.get("clicks", 0),
-                "leads": metrics.get("leads", 0),
-                "spend": metrics.get("spend", 0),
-                "cpa": metrics.get("cpa", 0),
-                "ctr": metrics.get("ctr", 0),
-            }
-        return None
-
-    def _extract_metrics(self, texts: list) -> dict:
-        """텍스트 리스트에서 숫자 지표 분류"""
-        metrics = {"impressions": 0, "clicks": 0, "leads": 0, "spend": 0, "cpa": 0, "ctr": 0}
-        numbers = []
-
-        for t in texts:
-            if '%' in t:
-                try:
-                    metrics["ctr"] = float(re.sub(r'[^0-9.]', '', t))
-                except:
-                    pass
+        for i, cell in enumerate(cells):
+            # CTR (XX.XX% 패턴)
+            ctr_match = re.match(r'^([\d.]+)%$', cell)
+            if ctr_match:
+                metrics["ctr"] = float(ctr_match.group(1))
                 continue
 
-            cleaned = re.sub(r'[^\d]', '', t)
-            if cleaned:
-                numbers.append(int(cleaned))
+            # 금액 (숫자+원 패턴): 686원, 1,673원 등
+            money_match = re.match(r'^([\d,]+)원$', cell)
+            if money_match:
+                val = int(money_match.group(1).replace(',', ''))
+                # 첫 번째 금액 = 소진비용, 두 번째 = CPM, 세 번째 = CPC 등
+                if "spend" not in metrics:
+                    metrics["spend"] = val
+                elif "cpm" not in metrics:
+                    metrics["cpm"] = val
+                elif "cpc" not in metrics:
+                    metrics["cpc"] = val
+                elif "cpa" not in metrics:
+                    metrics["cpa"] = val
+                continue
 
-        # 숫자 크기로 지표 분류 (큰 순: 노출 > 소진 > 클릭 > 리드)
-        numbers.sort(reverse=True)
-        if len(numbers) >= 1:
-            metrics["impressions"] = numbers[0]
-        if len(numbers) >= 2:
-            metrics["spend"] = numbers[1] if numbers[1] > 100 else numbers[1]
-        if len(numbers) >= 3:
-            metrics["clicks"] = numbers[2]
-        if len(numbers) >= 4:
-            metrics["leads"] = numbers[3]
+            # 순수 정수 (콤마 포함): 410, 11 등
+            if re.match(r'^[\d,]+$', cell):
+                val = int(cell.replace(',', ''))
+                if val > 0:
+                    if "impressions" not in metrics:
+                        metrics["impressions"] = val
+                    elif "reach" not in metrics:
+                        metrics["reach"] = val
+                    elif "clicks" not in metrics:
+                        metrics["clicks"] = val
+                    elif "leads" not in metrics:
+                        metrics["leads"] = val
+
+            # 소수 (1.03 등) - 빈도수
+            if re.match(r'^\d+\.\d+$', cell):
+                if "frequency" not in metrics:
+                    metrics["frequency"] = float(cell)
 
         return metrics
 
