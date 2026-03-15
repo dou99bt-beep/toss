@@ -1,11 +1,10 @@
 import { Router } from 'express';
-import prisma from '../db';
+import supabase from '../db';
 
 const router = Router();
 
 // GET /dashboard/summary
 router.get('/summary', async (req, res) => {
-  // 실제로는 DB에서 집계 로직 수행
   res.json({
     total_spend: 1250000,
     total_leads: 450,
@@ -16,11 +15,18 @@ router.get('/summary', async (req, res) => {
 
 // GET /dashboard/trend
 router.get('/trend', async (req, res) => {
-  const trends = await prisma.performanceDaily.findMany({
-    orderBy: { date: 'asc' },
-    take: 30,
-  });
-  res.json(trends);
+  try {
+    const { data, error } = await supabase
+      .from('performance_daily')
+      .select('*')
+      .order('date', { ascending: true })
+      .limit(30);
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // GET /dashboard/heatmap/hourly

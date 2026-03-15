@@ -1,26 +1,32 @@
-import prisma from '../db';
-// import { executeTossActionTask } from '../tasks/crawlerTasks';
+import supabase from '../db';
 
 export const actionService = {
   async approveAndExecute(actionId: string, reason: string) {
-    // 1. DB 상태 업데이트
-    const action = await prisma.recommendedAction.findUnique({
-      where: { id: actionId },
-    });
+    // 1. Find the action
+    const { data: action, error: findError } = await supabase
+      .from('recommended_actions')
+      .select('*')
+      .eq('id', actionId)
+      .single();
 
-    if (!action || action.status !== 'PENDING') {
+    if (findError || !action || action.status !== 'PENDING') {
       return null;
     }
 
-    const updatedAction = await prisma.recommendedAction.update({
-      where: { id: actionId },
-      data: { status: 'APPROVED' },
-    });
+    // 2. Update status to APPROVED
+    const { data: updatedAction, error: updateError } = await supabase
+      .from('recommended_actions')
+      .update({ status: 'APPROVED' })
+      .eq('id', actionId)
+      .select()
+      .single();
 
-    // 2. Python Playwright 워커로 작업 위임 (MSA 구조)
-    // CrawlerJob 테이블에 작업을 삽입하면 Python 워커가 폴링하여 실행
-    await prisma.crawlerJob.create({
-      data: {
+    if (updateError) throw updateError;
+
+    // 3. Create crawler job for execution
+    const { error: jobError } = await supabase
+      .from('crawler_jobs')
+      .insert({
         job_type: 'EXECUTE_ACTION',
         payload: JSON.stringify({
           action_id: updatedAction.id,
@@ -28,8 +34,9 @@ export const actionService = {
           action_type: updatedAction.action_type,
           reason: reason
         })
-      }
-    });
+      });
+
+    if (jobError) throw jobError;
 
     return updatedAction;
   },

@@ -1,5 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { createClient } from '@supabase/supabase-js';
 
-const prisma = new PrismaClient();
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://eqborqviqnjlqkmtwtox.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxYm9ycXZpcW5qbHFrbXR3dG94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NTQ3NTgsImV4cCI6MjA4OTEzMDc1OH0.z_VDvIy5Hl46r5ncgziuaCtF_bBUNCIoPF6QKbSzHz8';
 
-export default prisma;
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+export default supabase;

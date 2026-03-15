@@ -1,24 +1,30 @@
 import { Router } from 'express';
-import prisma from '../db';
+import supabase from '../db';
 
 const router = Router();
 
 // GET /crawler/status
 router.get('/status', async (req, res) => {
-  const latestLog = await prisma.crawlerLog.findFirst({
-    orderBy: { created_at: 'desc' },
-  });
-  
-  res.json({
-    status: latestLog?.status || 'IDLE',
-    last_run: latestLog?.created_at,
-    screenshot_url: latestLog?.screenshot_url,
-  });
+  try {
+    const { data, error } = await supabase
+      .from('crawler_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    res.json({
+      status: data?.status || 'IDLE',
+      last_run: data?.created_at,
+      screenshot_url: data?.screenshot_url,
+    });
+  } catch (error: any) {
+    res.json({ status: 'IDLE', last_run: null, screenshot_url: null });
+  }
 });
 
 // POST /crawler/relogin
 router.post('/relogin', async (req, res) => {
-  // 봇 재로그인 로직 호출
   res.json({ message: 'Relogin task triggered' });
 });
 
