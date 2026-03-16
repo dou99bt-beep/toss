@@ -74,18 +74,23 @@ def upsert_creatives(creatives: list[dict]):
 
 
 def insert_performance(data: list[dict]):
-    """성과 데이터 삽입 (중복 무시)"""
+    """성과 데이터 삽입"""
     if not data:
         return
-    try:
-        result = supabase.table("performance_daily").upsert(
-            data, on_conflict="date,toss_adset_id"
-        ).execute()
-        print(f"[DB] performance_daily: {len(result.data)}건 저장")
-        return result.data
-    except Exception as e:
-        print(f"[DB] performance 저장 에러: {e}")
-        return []
+    saved = 0
+    for row in data:
+        try:
+            result = supabase.table("performance_daily").insert(row).execute()
+            if result.data:
+                saved += 1
+        except Exception as e:
+            err = str(e)
+            if "duplicate" in err.lower() or "unique" in err.lower() or "23505" in err:
+                saved += 1  # 이미 존재 = OK
+            else:
+                print(f"[DB] insert 에러: {err[:80]}")
+    print(f"[DB] performance_daily: {saved}건 저장")
+    return saved
 
 
 def insert_crawler_log(log: dict):
