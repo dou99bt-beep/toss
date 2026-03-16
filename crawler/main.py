@@ -99,6 +99,9 @@ def main():
     parser.add_argument("--collect-configs", action="store_true", help="광고세트 상세 설정 수집")
     parser.add_argument("--analyze", action="store_true", help="성과 분석 보고서 생성 (브라우저 불필요)")
     parser.add_argument("--design-test", action="store_true", help="A/B 테스트 계획 설계 (브라우저 불필요)")
+    parser.add_argument("--run-test", action="store_true", help="A/B 테스트 사이클 실행 (설계만, 생성은 수동)")
+    parser.add_argument("--run-test-auto", action="store_true", help="A/B 테스트 사이클 + 자동 생성 (브라우저 필요)")
+    parser.add_argument("--evaluate", action="store_true", help="진행 중인 A/B 테스트 평가 (브라우저 불필요)")
     parser.add_argument("--loop", action="store_true", help="1시간 주기 반복 실행")
     parser.add_argument("--headless", action="store_true", help="headless 모드 (브라우저 창 숨김)")
     parser.add_argument("--keep-open", action="store_true", help="수집 후 브라우저 안 닫기")
@@ -122,6 +125,18 @@ def main():
         designer = ABTestDesigner()
         plan = designer.design_test_plan()
         designer.save_plan(plan)
+        return
+
+    if args.run_test:
+        from .optimization.test_runner import TestRunner
+        runner = TestRunner()
+        runner.run_full_cycle(auto_create=False)
+        return
+
+    if args.evaluate:
+        from .optimization.test_runner import TestRunner
+        runner = TestRunner()
+        runner.evaluate_test()
         return
 
     if args.loop:

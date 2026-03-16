@@ -1,0 +1,149 @@
+{
+  "created_at": "2026-03-16T15:08:25.937097",
+  "status": "DESIGNED",
+  "daily_budget_per_arm": 50000,
+  "total_daily_budget": 150000,
+  "min_days": 3,
+  "control": {
+    "adset_id": "977047",
+    "name": "광고세트(리스트)_직접 입찰CPC 300원 _요일별 설정\n상세\n이름\n시간",
+    "config": {
+      "id": "49be60d6-c02a-4f0b-a0bf-4b6907b8e7dd",
+      "toss_adset_id": "977047",
+      "adset_name": "광고세트(리스트)_직접 입찰CPC 300원 _요일별 설정\n상세\n이름\n시간·일별\n다운로드",
+      "bid_type": "자동 입찰",
+      "bid_strategy": null,
+      "target_cost": 0,
+      "daily_budget": 10368000,
+      "ad_format": "보드",
+      "schedule_type": "요일별 설정",
+      "schedule_json": {
+        "fri": [
+          11,
+          12,
+          13,
+          14
+        ],
+        "mon": [
+          0,
+          1,
+          2,
+          8,
+          11,
+          12,
+          13,
+          14,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ],
+        "sat": [],
+        "sun": [],
+        "thu": [
+          0,
+          1,
+          2,
+          8,
+          11,
+          12,
+          13,
+          14,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ],
+        "tue": [
+          0,
+          1,
+          2,
+          8,
+          11,
+          12,
+          13,
+          14,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ],
+        "wed": [
+          0,
+          1,
+          2,
+          8,
+          11,
+          12,
+          13,
+          14,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ]
+      },
+      "period_type": "캠페인과 동일",
+      "period_start": null,
+      "period_end": null,
+      "target_gender": "전체",
+      "target_age": "특정 연령",
+      "target_age_min": 35,
+      "target_age_max": 39,
+      "target_device": "전체",
+      "target_carrier": "전체",
+      "target_interests": null,
+      "target_industries": null,
+      "target_spending": null,
+      "target_count": 1331000,
+      "creatives_count": 18,
+      "creatives_json": "[{\"name\": \"법무법인 명률\", \"status\": \"승인\"}, {\"name\": \"법무법인 명율\", \"status\": \"승인\"}, {\"name\": \"법무법인 명률\", \"status\": \"승인\"}, {\"name\": \"법무법인 명율\", \"status\": \"승인\"}, {\"name\": \"명율\", \"status\": \"승인\"}, {\"name\": \"법무법인 명율\", \"status\": \"승인\"}, {\"name\": \"법무법인 명율\", \"status\": \"승인\"}, {\"name\": \"2026 이미지\", \"status\": \"승인\"}, {\"name\": \"빚 탈출 이미지\", \"status\": \"승인\"}, {\"name\": \"손잡으세요 이미지\", \"status\": \"승인\"}, {\"name\": \"고민 이미지\", \"status\": \"반려\"}, {\"name\": \"손잡으세요 이미지\", \"status\": \"승인\"}, {\"name\": \"빚 탈출 이미지\", \"status\": \"승인\"}, {\"name\": \"2026 이미지\", \"status\": \"승인\"}, {\"name\": \"2026 이미지\", \"status\": \"승인\"}, {\"name\": \"빚 탈출 이미지\", \"status\": \"승인\"}, {\"name\": \"손잡으세요 이미지\", \"status\": \"승인\"}, {\"name\": \"손잡으세요 이미지\", \"status\": \"승인\"}]",
+      "collected_at": "2026-03-16T05:06:19.687221+00:00"
+    }
+  },
+  "treatments": [
+    {
+      "name": "실험_노출 시간_항상 노출",
+      "variable": "schedule_type",
+      "variable_name": "노출 시간",
+      "control_value": "요일별 설정",
+      "treatment_value": "항상 노출",
+      "config_diff": {
+        "schedule_type": "항상 노출"
+      }
+    },
+    {
+      "name": "실험_입찰 방식_직접 입찰",
+      "variable": "bid_type",
+      "variable_name": "입찰 방식",
+      "control_value": "자동 입찰",
+      "treatment_value": "직접 입찰",
+      "config_diff": {
+        "bid_type": "직접 입찰"
+      }
+    }
+  ],
+  "expected_metrics": {
+    "test_duration_days": 3,
+    "arms_count": 3,
+    "daily_cost": 150000,
+    "total_cost": 450000,
+    "min_impressions_needed": 3000,
+    "min_clicks_needed": 90
+  },
+  "test_id": "20260316_150825",
+  "start_date": "2026-03-16T15:08:25.940509",
+  "end_date": "2026-03-19T15:08:25.940509"
+}
