@@ -287,11 +287,14 @@ function OverviewTab({ totalSpend, totalClicks, totalImpressions, totalLeads, av
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm font-mono">
           {[
-            { cmd: 'python -m crawler.main --collect-configs', desc: '광고세트 설정 수집' },
+            { cmd: 'python -m crawler.main --collect-configs', desc: '광고세트 설정 수집 (재시도+관심사 파싱)' },
             { cmd: 'python -m crawler.main --analyze', desc: '성과 분석 보고서' },
             { cmd: 'python -m crawler.main --design-test', desc: 'A/B 테스트 설계' },
             { cmd: 'python -m crawler.main --run-test', desc: '테스트 사이클 실행' },
-            { cmd: 'python -m crawler.main --evaluate', desc: '테스트 평가' },
+            { cmd: 'python -m crawler.main --evaluate', desc: '테스트 평가/판정' },
+            { cmd: 'python -m crawler.main --optimize-budget', desc: '💰 CPA 기반 예산 자동 배분' },
+            { cmd: 'python -m crawler.main --check-fatigue', desc: '🎨 소재 피로도 감지' },
+            { cmd: 'python -m crawler.main --monitor', desc: '📊 예산 소진 모니터링' },
             { cmd: 'python -m crawler.main --report', desc: '성과 데이터 수집' },
           ].map((item, i) => (
             <div key={i} className="flex items-start gap-2 bg-slate-800 rounded-lg px-3 py-2">

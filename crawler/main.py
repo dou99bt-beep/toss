@@ -102,6 +102,9 @@ def main():
     parser.add_argument("--run-test", action="store_true", help="A/B 테스트 사이클 실행 (설계만, 생성은 수동)")
     parser.add_argument("--run-test-auto", action="store_true", help="A/B 테스트 사이클 + 자동 생성 (브라우저 필요)")
     parser.add_argument("--evaluate", action="store_true", help="진행 중인 A/B 테스트 평가 (브라우저 불필요)")
+    parser.add_argument("--optimize-budget", action="store_true", help="CPA 기반 예산 자동 배분 (브라우저 불필요)")
+    parser.add_argument("--check-fatigue", action="store_true", help="소재 피로도 감지 (브라우저 불필요)")
+    parser.add_argument("--monitor", action="store_true", help="예산 소진 모니터링 (브라우저 불필요)")
     parser.add_argument("--loop", action="store_true", help="1시간 주기 반복 실행")
     parser.add_argument("--headless", action="store_true", help="headless 모드 (브라우저 창 숨김)")
     parser.add_argument("--keep-open", action="store_true", help="수집 후 브라우저 안 닫기")
@@ -137,6 +140,24 @@ def main():
         from .optimization.test_runner import TestRunner
         runner = TestRunner()
         runner.evaluate_test()
+        return
+
+    if args.optimize_budget:
+        from .optimization.budget_optimizer import BudgetOptimizer
+        optimizer = BudgetOptimizer()
+        optimizer.optimize(total_pool=300000)
+        return
+
+    if args.check_fatigue:
+        from .optimization.creative_fatigue_detector import CreativeFatigueDetector
+        detector = CreativeFatigueDetector()
+        detector.detect()
+        return
+
+    if args.monitor:
+        from .optimization.budget_monitor import BudgetMonitor
+        monitor = BudgetMonitor()
+        monitor.check()
         return
 
     if args.loop:

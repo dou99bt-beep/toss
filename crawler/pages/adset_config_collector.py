@@ -93,52 +93,64 @@ class AdSetConfigCollector(BasePage):
 
         return items
 
-    def _collect_single_config(self, item: dict) -> dict:
-        """단일 광고세트의 상세 설정 수집"""
+    def _collect_single_config(self, item: dict, max_retries: int = 3) -> dict:
+        """단일 광고세트의 상세 설정 수집 (재시도 포함)"""
         adset_id = item["id"]
 
-        # 광고세트 상세 페이지 이동
+        for attempt in range(1, max_retries + 1):
+            try:
+                config = self._try_collect(adset_id, item["name"])
+                # 핵심 필드 파싱 성공 여부 확인
+                if config.get("bid_type") is not None:
+                    return config
+                if attempt < max_retries:
+                    print(f"  [↻] 파싱 불완전, 재시도 {attempt+1}/{max_retries}")
+                    time.sleep(3)
+            except Exception as e:
+                print(f"  [!] 수집 에러 (시도 {attempt}/{max_retries}): {e}")
+                if attempt < max_retries:
+                    time.sleep(3)
+
+        # 마지막 시도 결과라도 반환
+        return config if 'config' in dir() else {"toss_adset_id": adset_id, "adset_name": item["name"]}
+
+    def _try_collect(self, adset_id: str, name: str) -> dict:
+        """실제 수집 로직"""
         url = f"{ADS_URL}/display-ads/v2/contract/{CAMPAIGN_ID}/set/{adset_id}"
         self.safe_goto(url)
-        time.sleep(5)
 
-        # 전체 스크롤 다운
-        self.page.evaluate("window.scrollTo(0, 5000)")
+        # 핵심 콘텐츠 로딩 대기 (sleep 대신 selector 기반)
+        try:
+            self.page.wait_for_selector("text=입찰", timeout=15000)
+        except:
+            time.sleep(5)  # fallback
+
+        # 전체 스크롤 다운 → 타겟/소재 영역 로딩
+        self.page.evaluate("window.scrollTo(0, 3000)")
+        time.sleep(2)
+        self.page.evaluate("window.scrollTo(0, 6000)")
         time.sleep(2)
 
-        # 페이지 텍스트 추출
         body = self.page.inner_text("body")
 
         config = {
             "toss_adset_id": adset_id,
-            "adset_name": item["name"],
+            "adset_name": name,
         }
 
-        # 1. 입찰 방식 파싱
         config.update(self._parse_bid_settings(body))
-
-        # 2. 예산 파싱
         config.update(self._parse_budget(body))
-
-        # 3. 노출 시간 파싱
         config.update(self._parse_schedule(body))
-
-        # 4. 노출 기간 파싱
         config.update(self._parse_period(body))
-
-        # 5. 타겟 파싱
         config.update(self._parse_target(body))
-
-        # 6. 소재 파싱
         config.update(self._parse_creatives(body))
-
-        # 7. 광고 유형
         config["ad_format"] = self._detect_format(body)
 
         print(f"  입찰: {config.get('bid_type')} / {config.get('bid_strategy')}")
         print(f"  예산: ₩{config.get('daily_budget', 0):,}")
         print(f"  노출: {config.get('schedule_type')}")
-        print(f"  타겟: {config.get('target_gender')} / 소재:{config.get('creatives_count', 0)}개")
+        print(f"  타겟: {config.get('target_gender')} 연령:{config.get('target_age')} 관심:{config.get('target_interests', '-')}")
+        print(f"  소재: {config.get('creatives_count', 0)}개")
 
         return config
 
@@ -223,7 +235,7 @@ class AdSetConfigCollector(BasePage):
         return result
 
     def _parse_target(self, text: str) -> dict:
-        """타겟 설정 파싱"""
+        """타겟 설정 파싱 (관심사/업종/소비수준 포함)"""
         result = {
             "target_gender": "전체",
             "target_age": "전체",
@@ -237,25 +249,92 @@ class AdSetConfigCollector(BasePage):
             "target_count": None,
         }
 
-        # 성별
-        if "남성" in text and "여성" not in text:
+        # 성별 ("타겟" 섹션 내에서 파싱)
+        target_section = text
+        if "타겟" in text:
+            idx = text.index("타겟")
+            target_section = text[idx:]
+
+        if "남성" in target_section and "여성" not in target_section:
             result["target_gender"] = "남성"
-        elif "여성" in text and "남성" not in text:
+        elif "여성" in target_section and "남성" not in target_section:
             result["target_gender"] = "여성"
+        elif "남성" in target_section and "여성" in target_section:
+            result["target_gender"] = "전체"
 
         # 연령
-        age_m = re.search(r'만\s*(\d+)세\s*[~～-]\s*만?\s*(\d+)세', text)
+        age_m = re.search(r'만\s*(\d+)세\s*[~～\-]\s*만?\s*(\d+)세', text)
         if age_m:
-            result["target_age"] = "특정 연령"
+            result["target_age"] = f"{age_m.group(1)}~{age_m.group(2)}세"
             result["target_age_min"] = int(age_m.group(1))
             result["target_age_max"] = int(age_m.group(2))
 
+        # 디바이스
+        if "안드로이드" in target_section and "iOS" not in target_section:
+            result["target_device"] = "안드로이드"
+        elif "iOS" in target_section and "안드로이드" not in target_section:
+            result["target_device"] = "iOS"
+
+        # 통신사
+        carriers = []
+        for c in ["SKT", "KT", "LG U+", "알뜰폰"]:
+            if c in target_section:
+                carriers.append(c)
+        if carriers and len(carriers) < 4:
+            result["target_carrier"] = ",".join(carriers)
+
+        # 관심·속성정보 파싱
+        interests = self._parse_interests(target_section)
+        if interests:
+            result["target_interests"] = interests
+
+        # 업종 카테고리 파싱
+        industries = self._parse_industries(target_section)
+        if industries:
+            result["target_industries"] = industries
+
+        # 소비 수준
+        spending_m = re.search(r'소비\s*수준[^\n]*\n?\s*(상위|중위|하위|전체)[^\n]*', target_section)
+        if spending_m:
+            result["target_spending"] = spending_m.group(1)
+
         # 타겟수
-        count_m = re.search(r'([\d,]+)\s*명\s*예상', text)
+        count_m = re.search(r'([\d,]+)\s*명\s*(?:예상|이상)', text)
         if count_m:
             result["target_count"] = int(count_m.group(1).replace(',', ''))
 
         return result
+
+    def _parse_interests(self, text: str) -> list:
+        """관심·속성정보 파싱"""
+        # 알려진 토스애즈 관심사 카테고리
+        known_interests = [
+            "대출", "신용관리", "보험", "투자", "저축", "부동산",
+            "쇼핑", "여행", "맛집", "건강", "교육", "육아",
+            "자동차", "전자기기", "패션", "뷰티", "게임",
+            "카드", "은행", "증권", "간편결제",
+            "재테크", "주식", "가상자산", "펀드",
+            "채무", "개인회생", "파산", "법률",
+        ]
+        found = []
+        for interest in known_interests:
+            if interest in text:
+                found.append(interest)
+        return found if found else None
+
+    def _parse_industries(self, text: str) -> list:
+        """업종 카테고리 파싱"""
+        known_industries = [
+            "전문서비스", "법률서비스", "금융", "의료", "교육",
+            "IT", "제조", "유통", "건설", "부동산",
+            "음식", "숙박", "엔터테인먼트", "미디어",
+            "공공기관", "비영리",
+        ]
+        found = []
+        for ind in known_industries:
+            if ind in text:
+                found.append(ind)
+        return found if found else None
 
     def _parse_creatives(self, text: str) -> dict:
         """소재 정보 파싱"""
