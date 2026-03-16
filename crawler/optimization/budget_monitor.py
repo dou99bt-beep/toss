@@ -103,8 +103,8 @@ class BudgetMonitor:
                 alerts.append(alert)
                 print(f"  ℹ️ {alert['message']}")
 
-            # 비효율 (5만원+ 소진 + 전환 0건)
-            if spend >= 50000 and leads == 0:
+            # 비효율 (2만원+ 소진 + 전환 0건)
+            if spend >= 20000 and leads == 0:
                 alert = {
                     "adset_id": aid,
                     "type": "INEFFICIENT",

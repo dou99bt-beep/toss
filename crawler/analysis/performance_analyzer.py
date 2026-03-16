@@ -181,8 +181,8 @@ class PerformanceAnalyzer:
             return recs
 
         # 가장 좋은/나쁜 광고세트 식별
-        best = [r for r in ranking if r["cpa"] is not None and r["spend"] > 10000]
-        worst = [r for r in ranking if r["cpa"] is None or r["cpa"] > 50000]
+        best = [r for r in ranking if r["cpa"] is not None and r["spend"] > 5000]
+        worst = [r for r in ranking if r["cpa"] is None or r["cpa"] > 20000]  # 최대 허용 CPA ₩20,000 초과
 
         if best:
             top = best[0]
@@ -200,7 +200,7 @@ class PerformanceAnalyzer:
 
         if worst:
             for w in worst[:3]:
-                if w["spend"] > 50000:  # 5만원 이상 소진했는데 전환 0
+                if w["spend"] > 20000:  # 2만원 이상 소진 + 전환 0 = 비효율
                     recs.append({
                         "type": "LOW_PERFORMER",
                         "message": f"비효율 광고세트: {w['name']} (소진: ₩{w['spend']:,}, 전환: {w['leads']}건)",

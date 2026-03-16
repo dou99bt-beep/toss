@@ -10,7 +10,7 @@ from ..core.supabase_client import supabase
 
 MIN_BUDGET = 50000    # 최소 일 예산
 MAX_RATIO = 0.40      # 한 세트에 최대 40%
-CPA_TARGET = 80000    # 목표 CPA
+CPA_TARGET = 15000    # 목표 CPA (최적: ₩6,000~15,000, 최대 허용: ₩20,000)
 
 
 class BudgetOptimizer:
