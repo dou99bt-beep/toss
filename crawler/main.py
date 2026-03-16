@@ -19,6 +19,7 @@ from .core.supabase_client import insert_crawler_log
 from .pages.login_page import LoginPage
 from .pages.campaign_page import CampaignPage
 from .pages.report_page import ReportPage
+from .pages.adset_config_collector import AdSetConfigCollector
 
 
 def run_once(browser_manager: BrowserManager, args):
@@ -42,12 +43,17 @@ def run_once(browser_manager: BrowserManager, args):
             print("[✓] 로그인 완료 (세션 저장됨). 종료합니다.")
             return True
 
-        if not args.report_only:
+        if not args.report_only and not args.collect_configs:
             campaign_page = CampaignPage(page)
             campaign_page.sync_all()
 
-        # 3. 성과 수집
-        if not args.sync_only:
+        # 3. 광고세트 설정 수집
+        if args.collect_configs:
+            collector = AdSetConfigCollector(page)
+            collector.collect_all_configs()
+
+        # 4. 성과 수집
+        if not args.sync_only and not args.collect_configs:
             report_page = ReportPage(page)
             if args.report_days > 1:
                 report_page.collect_multi_day(args.report_days)
@@ -90,6 +96,7 @@ def main():
     parser.add_argument("--sync", dest="sync_only", action="store_true", help="캠페인 구조 동기화만")
     parser.add_argument("--report", dest="report_only", action="store_true", help="성과 데이터만 수집")
     parser.add_argument("--report-days", type=int, default=1, help="성과 수집 기간 (일)")
+    parser.add_argument("--collect-configs", action="store_true", help="광고세트 상세 설정 수집")
     parser.add_argument("--loop", action="store_true", help="1시간 주기 반복 실행")
     parser.add_argument("--headless", action="store_true", help="headless 모드 (브라우저 창 숨김)")
     parser.add_argument("--keep-open", action="store_true", help="수집 후 브라우저 안 닫기")
