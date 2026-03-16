@@ -97,15 +97,32 @@ def main():
     parser.add_argument("--report", dest="report_only", action="store_true", help="성과 데이터만 수집")
     parser.add_argument("--report-days", type=int, default=1, help="성과 수집 기간 (일)")
     parser.add_argument("--collect-configs", action="store_true", help="광고세트 상세 설정 수집")
+    parser.add_argument("--analyze", action="store_true", help="성과 분석 보고서 생성 (브라우저 불필요)")
+    parser.add_argument("--design-test", action="store_true", help="A/B 테스트 계획 설계 (브라우저 불필요)")
     parser.add_argument("--loop", action="store_true", help="1시간 주기 반복 실행")
     parser.add_argument("--headless", action="store_true", help="headless 모드 (브라우저 창 숨김)")
     parser.add_argument("--keep-open", action="store_true", help="수집 후 브라우저 안 닫기")
     args = parser.parse_args()
 
     print("=" * 50)
-    print("  토스애즈 크롤러 v1.0")
+    print("  토스애즈 크롤러 v2.0")
     print(f"  시작 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 50)
+
+    # 브라우저 불필요한 분석 모드
+    if args.analyze:
+        from .analysis.performance_analyzer import PerformanceAnalyzer
+        analyzer = PerformanceAnalyzer()
+        analyzer.load_data()
+        analyzer.print_report()
+        return
+
+    if args.design_test:
+        from .analysis.ab_test_designer import ABTestDesigner
+        designer = ABTestDesigner()
+        plan = designer.design_test_plan()
+        designer.save_plan(plan)
+        return
 
     if args.loop:
         interval = 3600  # 1시간
