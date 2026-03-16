@@ -101,17 +101,21 @@ CREATE TRIGGER update_arm_registry_updated_at BEFORE UPDATE ON arm_registry FOR 
 
 -- 7. PerformanceDaily
 CREATE TABLE IF NOT EXISTS performance_daily (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  arm_id      UUID NOT NULL REFERENCES arm_registry(id) ON DELETE CASCADE,
-  date        TIMESTAMPTZ NOT NULL,
-  spend       DOUBLE PRECISION NOT NULL DEFAULT 0,
-  impressions INT NOT NULL DEFAULT 0,
-  clicks      INT NOT NULL DEFAULT 0,
-  leads       INT NOT NULL DEFAULT 0,
-  cpa         DOUBLE PRECISION NOT NULL DEFAULT 0,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  deleted_at  TIMESTAMPTZ
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  arm_id          UUID REFERENCES arm_registry(id) ON DELETE CASCADE,
+  toss_adset_id   TEXT,
+  ad_set_name     TEXT,
+  date            TIMESTAMPTZ NOT NULL,
+  spend           DOUBLE PRECISION NOT NULL DEFAULT 0,
+  impressions     INT NOT NULL DEFAULT 0,
+  clicks          INT NOT NULL DEFAULT 0,
+  leads           INT NOT NULL DEFAULT 0,
+  cpa             DOUBLE PRECISION NOT NULL DEFAULT 0,
+  ctr             DOUBLE PRECISION NOT NULL DEFAULT 0,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at      TIMESTAMPTZ,
+  UNIQUE(date, toss_adset_id)
 );
 DROP TRIGGER IF EXISTS update_performance_daily_updated_at ON performance_daily;
 CREATE TRIGGER update_performance_daily_updated_at BEFORE UPDATE ON performance_daily FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

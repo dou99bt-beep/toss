@@ -132,4 +132,47 @@ class BudgetOptimizer:
             print(f"    CPA:{cpa} | 현재:₩{r.get('current_budget',0):,} → 신규:₩{r.get('new_budget',0):,} {arrow}")
 
         print(f"\n  총 배분: ₩{total_new:,} / 풀: ₩{pool:,}")
+
+        # DB 저장
+        self._save_to_db(rankings)
+
         return {"rankings": rankings, "total_allocated": total_new, "pool": pool}
+
+    def _save_to_db(self, rankings: list):
+        """예산 배분 결과를 recommended_actions로 저장"""
+        for r in rankings:
+            change = r.get("new_budget", 0) - r.get("current_budget", 0)
+            if change == 0:
+                continue
+            try:
+                supabase.table("recommended_actions").insert({
+                    "rule_id": self._get_or_create_rule(),
+                    "action_type": "BUDGET_CHANGE",
+                    "reason": json.dumps({
+                        "adset_id": r["adset_id"],
+                        "name": r["name"],
+                        "current": r.get("current_budget", 0),
+                        "new": r.get("new_budget", 0),
+                        "cpa": r["cpa"] if r["cpa"] != float('inf') else None,
+                    }, ensure_ascii=False, default=str),
+                    "status": "PENDING",
+                }).execute()
+            except Exception as e:
+                print(f"  [!] DB 저장 에러: {e}")
+                break
+
+    def _get_or_create_rule(self) -> str:
+        """BUDGET_OPT 자동화 룰 ID 확보"""
+        try:
+            res = supabase.table("automation_rules").select("id").eq("name", "BUDGET_OPTIMIZER").limit(1).execute()
+            if res.data:
+                return res.data[0]["id"]
+            res = supabase.table("automation_rules").insert({
+                "name": "BUDGET_OPTIMIZER",
+                "condition_json": json.dumps({"type": "CPA_PROPORTIONAL"}),
+                "action_type": "BUDGET_CHANGE",
+                "is_active": True,
+            }).execute()
+            return res.data[0]["id"]
+        except:
+            return "00000000-0000-0000-0000-000000000000"

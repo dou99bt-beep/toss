@@ -94,5 +94,45 @@ class CreativeFatigueDetector:
 
         if not alerts:
             print("\n  ✅ 피로도 감지된 광고세트 없음")
+        else:
+            self._save_alerts(alerts)
 
         return alerts
+
+    def _save_alerts(self, alerts: list):
+        """피로도 경고를 recommended_actions에 저장"""
+        import json
+        for a in alerts:
+            try:
+                # 자동화 룰 확보
+                rule_id = self._get_or_create_rule()
+                supabase.table("recommended_actions").insert({
+                    "rule_id": rule_id,
+                    "action_type": "CREATIVE_REFRESH",
+                    "reason": json.dumps({
+                        "adset_id": a["adset_id"],
+                        "drop_rate": a["drop_rate"],
+                        "first_ctr": a["first_ctr"],
+                        "last_ctr": a["last_ctr"],
+                        "period": a["period"],
+                    }, ensure_ascii=False),
+                    "status": "PENDING",
+                }).execute()
+            except Exception as e:
+                print(f"  [!] DB 저장 에러: {e}")
+                break
+
+    def _get_or_create_rule(self) -> str:
+        try:
+            res = supabase.table("automation_rules").select("id").eq("name", "CREATIVE_FATIGUE").limit(1).execute()
+            if res.data:
+                return res.data[0]["id"]
+            res = supabase.table("automation_rules").insert({
+                "name": "CREATIVE_FATIGUE",
+                "condition_json": '{"type":"CTR_DECLINE_3DAY","threshold":0.20}',
+                "action_type": "CREATIVE_REFRESH",
+                "is_active": True,
+            }).execute()
+            return res.data[0]["id"]
+        except:
+            return "00000000-0000-0000-0000-000000000000"

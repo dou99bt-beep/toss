@@ -118,5 +118,44 @@ class BudgetMonitor:
 
         if not alerts:
             print("  ✅ 이상 없음")
+        else:
+            self._save_alerts(alerts)
 
         return alerts
+
+    def _save_alerts(self, alerts: list):
+        """모니터링 알림을 recommended_actions에 저장"""
+        import json
+        rule_id = self._get_or_create_rule()
+        for a in alerts:
+            try:
+                supabase.table("recommended_actions").insert({
+                    "rule_id": rule_id,
+                    "action_type": a["type"],
+                    "reason": json.dumps({
+                        "adset_id": a.get("adset_id"),
+                        "message": a.get("message"),
+                        "spend": a.get("spend"),
+                        "budget": a.get("budget"),
+                        "severity": a.get("severity"),
+                    }, ensure_ascii=False, default=str),
+                    "status": "PENDING",
+                }).execute()
+            except Exception as e:
+                print(f"  [!] DB 저장 에러: {e}")
+                break
+
+    def _get_or_create_rule(self) -> str:
+        try:
+            res = supabase.table("automation_rules").select("id").eq("name", "BUDGET_MONITOR").limit(1).execute()
+            if res.data:
+                return res.data[0]["id"]
+            res = supabase.table("automation_rules").insert({
+                "name": "BUDGET_MONITOR",
+                "condition_json": '{"overspend":1.2,"underspend":0.5,"inefficient":20000}',
+                "action_type": "BUDGET_ALERT",
+                "is_active": True,
+            }).execute()
+            return res.data[0]["id"]
+        except:
+            return "00000000-0000-0000-0000-000000000000"

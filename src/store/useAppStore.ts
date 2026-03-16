@@ -62,24 +62,143 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   fetchActions: async () => {
     try {
-      const response = await fetch('/api/actions');
-      if (response.ok) {
-        const data = await response.json();
-        set({ actions: data });
+      // Supabase 직접 조회
+      const { supabase } = await import('../lib/supabase');
+      const { data, error } = await supabase
+        .from('recommended_actions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (!error && data && data.length > 0) {
+        const mapped = data.map((a: any) => {
+          let reason = a.reason;
+          try { reason = JSON.parse(a.reason); } catch {}
+          return {
+            id: a.id,
+            type: a.action_type,
+            status: a.status,
+            reason: typeof reason === 'object' ? reason.message || JSON.stringify(reason) : reason,
+            adsetId: typeof reason === 'object' ? reason.adset_id : null,
+            createdAt: a.created_at,
+          };
+        });
+        set({ actions: mapped });
         return;
       }
     } catch (error) {
-      console.warn('API unavailable, using mock data for actions');
+      console.warn('Supabase unavailable, trying API fallback');
     }
-    // Fallback to mock data
+    // API fallback
+    try {
+      const response = await fetch('/api/actions');
+      if (response.ok) {
+        set({ actions: await response.json() });
+        return;
+      }
+    } catch {}
+    // Mock fallback
     set({ actions: tossAdsMockDB.recommendedActions });
   },
 
   fetchArms: async () => {
     try {
+      // Supabase 직접 조회
+      const { supabase } = await import('../lib/supabase');
+      
+      // 광고세트 설정 (최신)
+      const { data: configs } = await supabase
+        .from('ad_set_configs')
+        .select('*')
+        .order('collected_at', { ascending: false });
+      
+      // 성과 데이터 (최근 30일)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const { data: perf } = await supabase
+        .from('performance_daily')
+        .select('*')
+        .gte('date', thirtyDaysAgo);
+      
+      if (configs && configs.length > 0) {
+        // 중복 제거 (최신만)
+        const unique = new Map<string, any>();
+        configs.forEach((c: any) => { if (!unique.has(c.toss_adset_id)) unique.set(c.toss_adset_id, c); });
+        
+        // 성과 집계
+        const perfMap = new Map<string, { spend: number; clicks: number; impressions: number; leads: number }>();
+        (perf || []).forEach((p: any) => {
+          const aid = p.toss_adset_id;
+          if (!aid) return;
+          if (!perfMap.has(aid)) perfMap.set(aid, { spend: 0, clicks: 0, impressions: 0, leads: 0 });
+          const m = perfMap.get(aid)!;
+          m.spend += p.spend || 0;
+          m.clicks += p.clicks || 0;
+          m.impressions += p.impressions || 0;
+          m.leads += p.leads || 0;
+        });
+        
+        const rule = get().rule;
+        const mappedArms: Arm[] = Array.from(unique.values()).map((c: any) => {
+          const p = perfMap.get(c.toss_adset_id) || { spend: 0, clicks: 0, impressions: 0, leads: 0 };
+          const cpa = p.leads > 0 ? p.spend / p.leads : 0;
+          const ctr = p.impressions > 0 ? (p.clicks / p.impressions) * 100 : 0;
+          const cpc = p.clicks > 0 ? p.spend / p.clicks : 0;
+          const cvr = p.clicks > 0 ? (p.leads / p.clicks) * 100 : 0;
+          const validLeads = Math.floor(p.leads * (0.7 + Math.random() * 0.2));
+          const validLeadRate = p.leads > 0 ? (validLeads / p.leads) * 100 : 0;
+          
+          let status: Arm['status'] = 'STABLE';
+          let reason = '목표 CPA 내에서 안정적으로 운영 중입니다.';
+          
+          if (p.spend < rule.targetCpa * 0.5 && p.clicks < rule.minClicks) {
+            status = 'TESTING';
+            reason = `데이터 수집 중 (클릭 ${p.clicks}회). 최소 ${rule.minClicks}회 클릭 이후 평가.`;
+          } else if (p.clicks >= rule.minClicks && p.leads === 0) {
+            status = 'PAUSE_CANDIDATE';
+            reason = `클릭 ${p.clicks}회 발생, 리드 0건. 소재 교체 필요.`;
+          } else if (cpa > 0 && cpa <= rule.targetCpa * 0.8) {
+            status = 'SCALE';
+            reason = `CPA ${cpa.toLocaleString()}원 우수. 예산 증액 권장.`;
+          } else if (cpa > rule.targetCpa * (rule.stopCriteria / 100)) {
+            status = 'PAUSED';
+            reason = `CPA(${cpa.toLocaleString()}원) 중단 기준 초과.`;
+          } else if (cpa > rule.targetCpa * 1.1) {
+            status = 'REDUCE';
+            reason = `CPA(${cpa.toLocaleString()}원) 목표 초과. 감액 권장.`;
+          }
+          
+          return {
+            id: c.id || c.toss_adset_id,
+            campaignName: '캠페인',
+            adSetName: c.adset_name || c.toss_adset_id,
+            creativeName: `소재 ${c.creatives_count || 0}개`,
+            target: `${c.target_gender || '전체'} ${c.target_age || '전체'}`,
+            schedule: c.schedule_type || '-',
+            bidStrategy: `${c.bid_type || '자동'} ${c.bid_strategy || ''}`.trim(),
+            status,
+            spend: p.spend,
+            impressions: p.impressions,
+            clicks: p.clicks,
+            leads: p.leads,
+            validLeads,
+            cpa, ctr, cpc, cvr, validLeadRate,
+            roas: 0,
+            reason,
+            createdAt: c.collected_at || new Date().toISOString(),
+          };
+        });
+        set({ arms: mappedArms });
+        return;
+      }
+    } catch (error) {
+      console.warn('Supabase unavailable, trying API fallback');
+    }
+    // API fallback
+    try {
       const response = await fetch('/api/arms');
       if (response.ok) {
         const data = await response.json();
+        const rule = get().rule;
         const mappedArms: Arm[] = data.map((arm: any) => {
           const totalSpend = arm.daily_performance?.reduce((sum: number, p: any) => sum + p.spend, 0) || 0;
           const totalLeads = arm.daily_performance?.reduce((sum: number, p: any) => sum + p.leads, 0) || 0;
@@ -91,63 +210,33 @@ export const useAppStore = create<AppState>((set, get) => ({
           const cvr = totalClicks > 0 ? (totalLeads / totalClicks) * 100 : 0;
           const validLeads = Math.floor(totalLeads * (0.7 + Math.random() * 0.2));
           const validLeadRate = totalLeads > 0 ? (validLeads / totalLeads) * 100 : 0;
-          
-          // Determine status from decision engine logic
-          const rule = get().rule;
           let status: Arm['status'] = ARM_STATUS_MAP[arm.status] || 'STABLE';
           let reason = '목표 CPA 내에서 안정적으로 운영 중입니다.';
-          
           if (totalSpend < rule.targetCpa * 0.5 && totalClicks < rule.minClicks) {
-            status = 'TESTING';
-            reason = `데이터 수집 중 (클릭 ${totalClicks}회, 소진액 ${totalSpend.toLocaleString()}원). 최소 ${rule.minClicks}회 클릭 이후 평가 시작.`;
-          } else if (totalClicks >= rule.minClicks && totalLeads === 0) {
-            status = 'PAUSE_CANDIDATE';
-            reason = `클릭 ${totalClicks}회 이상 발생했으나 리드가 0건입니다. 소재 교체 또는 중단이 필요합니다.`;
+            status = 'TESTING'; reason = `데이터 수집 중 (클릭 ${totalClicks}회).`;
           } else if (cpa > 0 && cpa <= rule.targetCpa * 0.8) {
-            status = 'SCALE';
-            reason = `CPA가 ${cpa.toLocaleString()}원으로 목표치(${rule.targetCpa.toLocaleString()}원)보다 크게 낮아 예산 증액을 권장합니다.`;
+            status = 'SCALE'; reason = `CPA ${cpa.toLocaleString()}원 우수.`;
           } else if (cpa > rule.targetCpa * (rule.stopCriteria / 100)) {
-            status = 'PAUSED';
-            reason = `CPA(${cpa.toLocaleString()}원)가 중단 기준(${(rule.targetCpa * rule.stopCriteria / 100).toLocaleString()}원)을 초과했습니다.`;
-          } else if (cpa > rule.targetCpa * 1.1) {
-            status = 'REDUCE';
-            reason = `CPA(${cpa.toLocaleString()}원)가 목표를 초과하고 있어 예산 감액을 권장합니다.`;
-          } else if (arm.status === 'PAUSED') {
-            status = 'PAUSED';
-            reason = '관리자에 의해 일시 중지된 상태입니다.';
+            status = 'PAUSED'; reason = `CPA 중단 기준 초과.`;
           }
-          
           return {
             id: arm.id,
-            campaignName: arm.ad_set?.campaign?.name || 'Unknown Campaign',
-            adSetName: arm.ad_set?.name || 'Unknown Ad Set',
-            creativeName: arm.creative?.content || 'Unknown Creative',
-            target: arm.audience?.name || 'Unknown Target',
+            campaignName: arm.ad_set?.campaign?.name || '',
+            adSetName: arm.ad_set?.name || '',
+            creativeName: arm.creative?.content || '',
+            target: arm.audience?.name || '',
             schedule: arm.schedule ? `${arm.schedule.day_of_week} ${arm.schedule.start_hour}~${arm.schedule.end_hour}시` : '-',
             bidStrategy: arm.ad_set?.target_cpa ? `타겟 CPA ${arm.ad_set.target_cpa.toLocaleString()}원` : '자동',
-            status,
-            spend: totalSpend,
-            impressions: totalImpressions,
-            clicks: totalClicks,
-            leads: totalLeads,
-            validLeads,
-            cpa,
-            ctr,
-            cpc,
-            cvr,
-            validLeadRate,
-            roas: 0,
-            reason,
-            createdAt: arm.created_at || new Date().toISOString()
+            status, spend: totalSpend, impressions: totalImpressions, clicks: totalClicks,
+            leads: totalLeads, validLeads, cpa, ctr, cpc, cvr, validLeadRate, roas: 0,
+            reason, createdAt: arm.created_at || new Date().toISOString()
           };
         });
         set({ arms: mappedArms });
         return;
       }
-    } catch (error) {
-      console.warn('API unavailable, using mock data for arms');
-    }
-    // Fallback: generate arms from mock data directly
+    } catch {}
+    // Mock fallback
     const rule = get().rule;
     const mockArms: Arm[] = tossAdsMockDB.arms.map((arm) => {
       const armDailyData = tossAdsMockDB.performanceDaily.filter(p => p.arm_id === arm.id);
@@ -166,21 +255,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       const creative = tossAdsMockDB.creatives.find(c => c.id === arm.creative_id);
       const audience = tossAdsMockDB.audiences.find(a => a.id === arm.audience_id);
       const schedule = tossAdsMockDB.schedules.find(s => s.id === arm.schedule_id);
-      
       let status: Arm['status'] = arm.status === 'PAUSED' ? 'PAUSED' : 'STABLE';
       let reason = '목표 CPA 내에서 안정적으로 운영 중입니다.';
       if (totalSpend < rule.targetCpa * 0.5 && totalClicks < rule.minClicks) {
-        status = 'TESTING'; reason = `데이터 수집 중 (클릭 ${totalClicks}회). 최소 ${rule.minClicks}회 클릭 이후 평가 시작.`;
-      } else if (totalClicks >= rule.minClicks && totalLeads === 0) {
-        status = 'PAUSE_CANDIDATE'; reason = `클릭 ${totalClicks}회 이상 발생했으나 리드가 0건.`;
+        status = 'TESTING'; reason = `데이터 수집 중.`;
       } else if (cpa > 0 && cpa <= rule.targetCpa * 0.8) {
-        status = 'SCALE'; reason = `CPA ${cpa.toLocaleString()}원으로 우수. 예산 증액 권장.`;
+        status = 'SCALE'; reason = `CPA ${cpa.toLocaleString()}원 우수.`;
       } else if (cpa > rule.targetCpa * (rule.stopCriteria / 100)) {
-        status = 'PAUSED'; reason = `CPA가 중단 기준을 초과했습니다.`;
-      } else if (cpa > rule.targetCpa * 1.1) {
-        status = 'REDUCE'; reason = `CPA가 목표를 초과. 예산 감액 권장.`;
+        status = 'PAUSED'; reason = `CPA 중단 기준 초과.`;
       }
-      
       return {
         id: arm.id, campaignName: campaign?.name || '', adSetName: adSet?.name || '',
         creativeName: creative?.content || '', target: audience?.name || '',
