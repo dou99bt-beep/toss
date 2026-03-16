@@ -11,6 +11,7 @@ import { AuditLog } from './pages/AuditLog';
 import { AlertCenter } from './pages/AlertCenter';
 import { LeadFormPreview } from './pages/LeadFormPreview';
 import { Settings } from './pages/Settings';
+import { CPAOptimization } from './pages/CPAOptimization';
 import { useAppStore } from './store/useAppStore';
 
 export default function App() {
@@ -46,6 +47,8 @@ export default function App() {
         return <LeadFormPreview />;
       case 'settings':
         return <Settings />;
+      case 'cpa-optimization':
+        return <CPAOptimization />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-slate-500 dark:text-slate-400">

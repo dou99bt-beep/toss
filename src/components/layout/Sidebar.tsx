@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   LayoutDashboard, Network, GitMerge, Zap, Image, 
-  Inbox, Bot, ShieldAlert, Settings, LogOut, Moon, Sun, Menu, X, Bell, ClipboardList
+  Inbox, Bot, ShieldAlert, Settings, LogOut, Moon, Sun, Menu, X, Bell, ClipboardList,
+  FlaskConical
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store/useAppStore';
@@ -15,6 +16,7 @@ interface SidebarProps {
 
 const menus = [
   { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
+  { id: 'cpa-optimization', label: 'CPA 최적화', icon: FlaskConical },
   { id: 'admin-analysis', label: '어드민 구조 분석', icon: Network },
   { id: 'arm-management', label: 'Arm 실험 관리', icon: GitMerge },
   { id: 'rule-engine', label: 'Rule Engine', icon: Zap },
